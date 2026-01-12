@@ -10,7 +10,7 @@ interface TaskInterface
      * Execute the task
      */
     public function execute(array $args, Context $context): mixed;
-    
+
     /**
      * Get task metadata (for planning/agent)
      */

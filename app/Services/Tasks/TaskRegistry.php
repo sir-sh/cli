@@ -5,7 +5,7 @@ namespace App\Services\Tasks;
 class TaskRegistry
 {
     private array $tasks = [];
-    
+
     /**
      * Register a task
      */
@@ -13,7 +13,7 @@ class TaskRegistry
     {
         $this->tasks[$name] = $task;
     }
-    
+
     /**
      * Get a task
      */
@@ -21,7 +21,7 @@ class TaskRegistry
     {
         return $this->tasks[$name] ?? null;
     }
-    
+
     /**
      * Get all registered tasks
      */
@@ -29,7 +29,7 @@ class TaskRegistry
     {
         return $this->tasks;
     }
-    
+
     /**
      * Check if a task exists
      */

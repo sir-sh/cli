@@ -10,27 +10,27 @@ class WorkspaceTempTask implements TaskInterface
     public function execute(array $args, Context $context): mixed
     {
         $prefix = $args['prefix'] ?? 'sir-workspace';
-        
+
         // Create temp directory
-        $tempDir = sys_get_temp_dir() . '/' . $prefix . '-' . uniqid();
+        $tempDir = sys_get_temp_dir().'/'.$prefix.'-'.uniqid();
         mkdir($tempDir, 0755, true);
-        
+
         // Optionally create repo subdirectory
         if (isset($args['repo'])) {
-            $repoDir = $tempDir . '/' . basename($args['repo'], '.git');
+            $repoDir = $tempDir.'/'.basename($args['repo'], '.git');
             mkdir($repoDir, 0755, true);
-            
+
             return [
                 'workspace' => $tempDir,
                 'repoPath' => $repoDir,
             ];
         }
-        
+
         return [
             'workspace' => $tempDir,
         ];
     }
-    
+
     public function getMetadata(): array
     {
         return [

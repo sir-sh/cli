@@ -5,8 +5,9 @@ namespace App\Services;
 class Context
 {
     private array $variables = [];
+
     private array $inputs = [];
-    
+
     /**
      * Set input values
      */
@@ -16,7 +17,7 @@ class Context
         // Inputs are also available as variables
         $this->variables = array_merge($this->variables, $inputs);
     }
-    
+
     /**
      * Get an input value
      */
@@ -24,7 +25,7 @@ class Context
     {
         return $this->inputs[$name] ?? $default;
     }
-    
+
     /**
      * Set a variable
      */
@@ -32,7 +33,7 @@ class Context
     {
         $this->variables[$name] = $value;
     }
-    
+
     /**
      * Get a variable
      */
@@ -40,7 +41,7 @@ class Context
     {
         return $this->variables[$name] ?? $default;
     }
-    
+
     /**
      * Get all variables
      */
@@ -48,7 +49,7 @@ class Context
     {
         return $this->variables;
     }
-    
+
     /**
      * Check if a variable exists
      */
@@ -56,7 +57,7 @@ class Context
     {
         return array_key_exists($name, $this->variables);
     }
-    
+
     /**
      * Resolve template string with variables
      * Supports {{varName}} syntax
@@ -65,23 +66,25 @@ class Context
     {
         return preg_replace_callback('/\{\{([^}]+)\}\}/', function ($matches) {
             $expression = trim($matches[1]);
-            
+
             // Handle shellQuote() function
             if (preg_match('/shellQuote\(([^)]+)\)/', $expression, $funcMatches)) {
                 $varName = trim($funcMatches[1]);
                 $value = $this->get($varName, '');
-                return escapeshellarg((string)$value);
+
+                return escapeshellarg((string) $value);
             }
-            
+
             // Handle default() function
             if (preg_match('/default\(([^,]+),\s*(.+)\)/', $expression, $funcMatches)) {
                 $varName = trim($funcMatches[1]);
                 $defaultValue = trim($funcMatches[2], '\'" ');
-                return (string)$this->get($varName, $defaultValue);
+
+                return (string) $this->get($varName, $defaultValue);
             }
-            
+
             // Simple variable
-            return (string)$this->get($expression, '');
+            return (string) $this->get($expression, '');
         }, $template);
     }
 }
