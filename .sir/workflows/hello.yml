@@ -1,0 +1,10 @@
+description: "Simple hello world workflow"
+
+inputs:
+  name:
+    type: string
+    required: true
+    description: "Your name"
+
+steps:
+  - shell: "echo 'Hello, {{name}}!'"

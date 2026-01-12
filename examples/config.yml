@@ -1,0 +1,14 @@
+# Example sir.sh configuration
+
+# Project mappings (for review workflow)
+projects:
+  myapp:
+    repo: "https://github.com/myorg/myapp.git"
+  
+  anotherproject:
+    repo: "https://github.com/myorg/another.git"
+
+# Global settings
+settings:
+  stopAtGit: true
+  defaultBranch: "main"

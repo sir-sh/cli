@@ -1,0 +1,10 @@
+{
+  "name": "sir-git",
+  "namespace": "git",
+  "version": "1.0.0",
+  "description": "Git operations pack for sir.sh",
+  "author": "sir.sh",
+  "methods": [
+    "clone"
+  ]
+}
