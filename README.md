@@ -12,6 +12,18 @@ A powerful CLI tool for developers who love automation. **sir.sh** (CLI command:
 - **AI Agent Interface**: MCP-style tool surface for AI assistants to discover and execute workflows safely
 - **Clean Output**: Step headers, progress indicators, timing, and success/fail markers
 
+## Known Limitations (v1)
+
+While the v1 implementation is fully functional for its intended use cases, there are some known limitations to be aware of:
+
+1. **Template Parsing**: The `default()` function in templates doesn't handle commas or nested parentheses in default values. For v1, use simple string literals as defaults.
+
+2. **Input Gathering**: The RunWorkflowCommand assumes workflow inputs are passed as options or the first positional argument. Multiple positional inputs aren't fully supported - use options for complex workflows.
+
+3. **Nested Properties**: Template expressions like `{{obj.property}}` aren't supported. Access nested values by setting them as top-level variables in workflow steps.
+
+These limitations are documented and can be addressed in future versions without breaking existing workflows.
+
 ## Installation
 
 ### Requirements
