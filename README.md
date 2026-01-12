@@ -171,7 +171,7 @@ Sir resolves `.sir/` folders by walking up from the current directory:
 
 1. Current directory: `./.sir`
 2. Parent directories: `../.sir`, `../../.sir`, etc.
-3. Stops at `.git` directory (configurable)
+3. Walks all the way to root `/`
 4. Global: `~/.sir`
 
 **Precedence**: Nearest layer overrides parent, parent overrides global.

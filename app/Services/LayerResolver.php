@@ -8,10 +8,10 @@ class LayerResolver
      * Resolve all .sir directories from current directory up to root and global ~/.sir
      *
      * @param  string|null  $startPath  Starting directory (defaults to current working directory)
-     * @param  bool  $stopAtGit  Whether to stop at .git directory (default true)
+     * @param  bool  $stopAtGit  Whether to stop at .git directory (default false)
      * @return array Array of absolute paths to .sir directories in order (nearest first, global last)
      */
-    public function resolve(?string $startPath = null, bool $stopAtGit = true): array
+    public function resolve(?string $startPath = null, bool $stopAtGit = false): array
     {
         $startPath = $startPath ?? getcwd();
         $layers = [];
@@ -37,6 +37,14 @@ class LayerResolver
                 break;
             }
             $current = $parent;
+        }
+        
+        // Check root directory for .sir as well
+        if ($current === $root) {
+            $sirPath = $root.'.sir';
+            if (is_dir($sirPath) && ! in_array($sirPath, $layers)) {
+                $layers[] = $sirPath;
+            }
         }
 
         // Add global ~/.sir if it exists
