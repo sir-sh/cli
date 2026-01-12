@@ -33,11 +33,14 @@ class TestsAutoTask implements TaskInterface
         }
 
         if (! $command) {
-            return [
-                'skipped' => true,
-                'message' => 'No test command found',
-                'markdown' => "## Tests\n\nNo test command detected in package.json or composer.json",
-            ];
+            throw new \RuntimeException(
+                "No test command found in the project.\n".
+                "Please add a 'test' script to either:\n".
+                "  - package.json (for npm projects)\n".
+                "  - composer.json (for PHP projects)\n".
+                "Example for package.json:\n".
+                '  "scripts": { "test": "jest" }'
+            );
         }
 
         // Run tests

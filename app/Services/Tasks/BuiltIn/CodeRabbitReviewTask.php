@@ -30,12 +30,14 @@ class CodeRabbitReviewTask implements TaskInterface
             return $this->runWithGitHubCLI($target, $base, $cwd);
         }
 
-        // No CLI available, return instruction
-        return [
-            'skipped' => true,
-            'message' => 'Neither coderabbit nor gh CLI found',
-            'markdown' => $this->getManualInstructions($target, $base),
-        ];
+        // No CLI available, throw exception with helpful message
+        throw new \RuntimeException(
+            "CodeRabbit review failed: Neither 'coderabbit' nor 'gh' CLI found.\n".
+            "Please install one of the following:\n".
+            "  - CodeRabbit CLI: https://coderabbit.ai/docs/cli\n".
+            "  - GitHub CLI: https://cli.github.com/\n".
+            "Then create a PR from '{$target}' to '{$base}' for CodeRabbit to review."
+        );
     }
 
     private function runCodeRabbitCLI(string $target, string $base, string $cwd): array
@@ -69,18 +71,6 @@ class CodeRabbitReviewTask implements TaskInterface
             'message' => 'Manual PR creation needed',
             'markdown' => $markdown,
         ];
-    }
-
-    private function getManualInstructions(string $target, string $base): string
-    {
-        $markdown = "## CodeRabbit Review\n\n";
-        $markdown .= "To get a CodeRabbit review:\n\n";
-        $markdown .= "1. Install CodeRabbit CLI: https://coderabbit.ai/docs/cli\n";
-        $markdown .= "2. Or install GitHub CLI: https://cli.github.com/\n";
-        $markdown .= "3. Create a PR from `{$target}` to `{$base}`\n";
-        $markdown .= "4. CodeRabbit will automatically review the PR\n";
-
-        return $markdown;
     }
 
     public function getMetadata(): array
