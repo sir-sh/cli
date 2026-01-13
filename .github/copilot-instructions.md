@@ -55,7 +55,7 @@ sir.sh is a local-first workflow/task runner CLI tool built on Laravel Zero. It 
 
 - Supports `{{variable}}` for variable substitution
 - `{{shellQuote(variable)}}` for shell-safe quoting
-- `{{default(variable, 'fallback')}}` for defaults (v1: simple literals only, no commas/nested parens)
+- `{{default(variable, 'fallback')}}` for defaults (v1: simple literals only, no commas/nested parentheses)
 
 ### Known v1 Limitations
 
@@ -85,7 +85,7 @@ sir.sh is a local-first workflow/task runner CLI tool built on Laravel Zero. It 
 - Add tests for new functionality
 - Document behavior changes in README.md
 - Send coherent commit history (squash intermediate commits)
-- Follow Laravel Zero's versioning: `paradigm.major.minor`
+- Follow Laravel's versioning scheme with the convention `paradigm.major.minor` (where paradigm represents major architectural changes)
 - Minor releases must not contain breaking changes
 
 ## Common Tasks
