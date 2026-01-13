@@ -1,0 +1,36 @@
+{
+  "method": "clone",
+  "description": "Clone a git repository",
+  "args": {
+    "repo": {
+      "type": "string",
+      "required": true,
+      "description": "Repository URL to clone"
+    },
+    "folder": {
+      "type": "path",
+      "required": false,
+      "description": "Target folder path"
+    },
+    "branch": {
+      "type": "string",
+      "required": false,
+      "description": "Branch to clone"
+    }
+  },
+  "returns": {
+    "path": {
+      "type": "path",
+      "description": "Path to cloned repository"
+    }
+  },
+  "effects": {
+    "network": true,
+    "writes": ["{{folder}}"],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "git clone {{#if branch}}--branch {{shellQuote(branch)}}{{/if}} {{shellQuote(repo)}} {{shellQuote(folder)}}"
+  }
+}
