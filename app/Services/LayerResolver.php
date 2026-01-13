@@ -38,7 +38,7 @@ class LayerResolver
             }
             $current = $parent;
         }
-        
+
         // Check root directory for .sir as well
         if ($current === $root) {
             $sirPath = $root.'.sir';
