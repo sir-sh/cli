@@ -88,6 +88,211 @@ class PackManager
     }
 
     /**
+     * Update a pack to a new ref or latest
+     *
+     * @param  string|null  $packId  Pack ID to update, or null for all
+     * @param  string|null  $ref  Specific ref to update to
+     * @param  bool  $isProject  Whether this is a project-level pack
+     * @param  bool  $dryRun  Preview mode without making changes
+     * @return array Update results
+     */
+    public function update(?string $packId = null, ?string $ref = null, bool $isProject = false, bool $dryRun = false): array
+    {
+        $results = [];
+
+        if ($packId !== null) {
+            // Update single pack
+            $results[] = $this->updateSinglePack($packId, $ref, $isProject, $dryRun);
+        } else {
+            // Update all packs
+            $packs = $this->list($isProject);
+            foreach ($packs as $id => $packInfo) {
+                $results[] = $this->updateSinglePack($id, $ref, $isProject, $dryRun);
+            }
+        }
+
+        return $results;
+    }
+
+    /**
+     * Update a single pack
+     */
+    private function updateSinglePack(string $packId, ?string $ref, bool $isProject, bool $dryRun): array
+    {
+        $installPath = $isProject
+            ? getcwd().'/.sir/packs/'.$packId
+            : $this->globalPacksPath.'/'.$packId;
+
+        $lockFile = $isProject
+            ? getcwd().'/.sir/packs.lock.json'
+            : $this->lockFilePath;
+
+        $lock = file_exists($lockFile)
+            ? json_decode(file_get_contents($lockFile), true)
+            : ['packs' => []];
+
+        if (! isset($lock['packs'][$packId])) {
+            return [
+                'packId' => $packId,
+                'success' => false,
+                'message' => 'Pack not found in lock file',
+            ];
+        }
+
+        $packInfo = $lock['packs'][$packId];
+        $currentCommit = $packInfo['commit'] ?? null;
+        $targetRef = $ref ?? $packInfo['ref'] ?? 'main';
+        $url = $packInfo['url'] ?? null;
+
+        if ($dryRun) {
+            return [
+                'packId' => $packId,
+                'success' => true,
+                'dryRun' => true,
+                'currentRef' => $packInfo['ref'],
+                'targetRef' => $targetRef,
+                'message' => "Would update {$packId} from {$packInfo['ref']} to {$targetRef}",
+            ];
+        }
+
+        // Create backup before update
+        $backupPath = $this->createBackup($installPath, $packId);
+
+        try {
+            // Fetch latest commits
+            $process = new Process(['git', 'fetch', 'origin']);
+            $process->setTimeout(60);
+            $process->setWorkingDirectory($installPath);
+            $process->run();
+
+            // Get current commit before update
+            $process = new Process(['git', 'rev-parse', 'HEAD']);
+            $process->setWorkingDirectory($installPath);
+            $process->run();
+            $oldCommit = trim($process->getOutput());
+
+            // Reset to target ref
+            $process = new Process(['git', 'reset', '--hard', "origin/{$targetRef}"]);
+            $process->setTimeout(60);
+            $process->setWorkingDirectory($installPath);
+            $process->run();
+
+            if (! $process->isSuccessful()) {
+                throw new \RuntimeException('Git reset failed: '.$process->getErrorOutput());
+            }
+
+            // Get new commit hash
+            $process = new Process(['git', 'rev-parse', 'HEAD']);
+            $process->setWorkingDirectory($installPath);
+            $process->run();
+            $newCommit = trim($process->getOutput());
+
+            // Validate pack after update
+            $metadata = $this->readPackMetadata($installPath);
+
+            // Update lock file
+            $lock['packs'][$packId]['ref'] = $targetRef;
+            $lock['packs'][$packId]['commit'] = $newCommit;
+            $lock['packs'][$packId]['updated_at'] = date('c');
+            $lock['packs'][$packId]['metadata'] = $metadata;
+
+            file_put_contents($lockFile, json_encode($lock, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+
+            // Clean up backup on success
+            if ($backupPath && is_dir($backupPath)) {
+                $this->deleteDirectory($backupPath);
+            }
+
+            return [
+                'packId' => $packId,
+                'success' => true,
+                'oldCommit' => $oldCommit,
+                'newCommit' => $newCommit,
+                'ref' => $targetRef,
+                'message' => "Updated {$packId} to {$targetRef}",
+            ];
+        } catch (\Throwable $e) {
+            // Rollback from backup
+            if ($backupPath && is_dir($backupPath)) {
+                $this->rollbackFromBackup($backupPath, $installPath);
+            }
+
+            return [
+                'packId' => $packId,
+                'success' => false,
+                'message' => 'Update failed: '.$e->getMessage(),
+            ];
+        }
+    }
+
+    /**
+     * Create a backup of a pack directory
+     */
+    private function createBackup(string $installPath, string $packId): ?string
+    {
+        if (! is_dir($installPath)) {
+            return null;
+        }
+
+        $backupDir = dirname($installPath).'/.backup';
+        if (! is_dir($backupDir)) {
+            mkdir($backupDir, 0755, true);
+        }
+
+        $backupPath = $backupDir.'/'.$packId.'-'.date('Y-m-d-His');
+
+        // Copy directory
+        $this->copyDirectory($installPath, $backupPath);
+
+        return $backupPath;
+    }
+
+    /**
+     * Rollback from backup
+     */
+    private function rollbackFromBackup(string $backupPath, string $installPath): void
+    {
+        // Remove current installation
+        if (is_dir($installPath)) {
+            $this->deleteDirectory($installPath);
+        }
+
+        // Restore from backup
+        $this->copyDirectory($backupPath, $installPath);
+    }
+
+    /**
+     * Copy directory recursively
+     */
+    private function copyDirectory(string $src, string $dst): void
+    {
+        if (! is_dir($dst)) {
+            mkdir($dst, 0755, true);
+        }
+
+        $files = array_diff(scandir($src), ['.', '..']);
+        foreach ($files as $file) {
+            $srcPath = $src.'/'.$file;
+            $dstPath = $dst.'/'.$file;
+            if (is_dir($srcPath)) {
+                $this->copyDirectory($srcPath, $dstPath);
+            } else {
+                copy($srcPath, $dstPath);
+            }
+        }
+    }
+
+    /**
+     * Get pack info including current commit
+     */
+    public function getPackInfo(string $packId, bool $isProject = false): ?array
+    {
+        $packs = $this->list($isProject);
+
+        return $packs[$packId] ?? null;
+    }
+
+    /**
      * Parse source string into URL and ref
      */
     private function parseSource(string $source): array
