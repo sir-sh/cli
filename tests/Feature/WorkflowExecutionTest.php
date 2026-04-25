@@ -72,10 +72,10 @@ YAML;
 
     expect($result)->toBeArray();
     expect($result['success'])->toBeTrue();
-    expect($result)->toHaveKey('results');
+    expect($result)->toHaveKey('steps');
 
     // Verify file was written
-    $writeResult = $result['results'][0];
+    $writeResult = $result['steps'][0]['output'];
     expect($writeResult)->toHaveKey('path');
     expect(file_exists($writeResult['path']))->toBeTrue();
     expect(file_get_contents($writeResult['path']))->toBe('Integration test message');
@@ -121,8 +121,8 @@ YAML;
     chdir($oldCwd);
 
     expect($result['success'])->toBeTrue();
-    expect($result['results'][0])->toHaveKey('output');
-    expect($result['results'][0]['output'])->toContain('test output');
+    expect($result['steps'][0])->toHaveKey('output');
+    expect($result['steps'][0]['output']['output'])->toContain('test output');
 
     // Cleanup
     unlink($tempDir.'/.sir/workflows/shell-test.yml');

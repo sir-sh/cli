@@ -18,8 +18,12 @@ class WorkflowRunner
         private ?OutputStyle $output = null
     ) {}
 
+    private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
+
     /**
      * Run a workflow with given inputs
+     *
+     * @return array{success: bool, stepCount: int, elapsedSeconds: float, steps: array}
      */
     public function run(array $workflow, array $inputs, bool $dryRun = false): array
     {
@@ -27,43 +31,73 @@ class WorkflowRunner
         $context->setInputs($inputs);
 
         $steps = $workflow['steps'] ?? [];
-        $results = [];
+        $stepResults = [];
+        $startTime = microtime(true);
 
         foreach ($steps as $index => $step) {
             $stepNum = $index + 1;
+            $step['_stepIndex'] = $index;
             $this->outputStepHeader($stepNum, $step);
 
             if ($dryRun) {
-                $this->output?->writeln("<comment>[DRY RUN]</comment> Would execute step {$stepNum}");
+                $this->output?->writeln('<comment>[DRY RUN]</comment> Would execute step '.$stepNum);
+
+                $stepResults[] = [
+                    'index' => $index,
+                    'name' => $step['name'] ?? $this->getStepName($step),
+                    'type' => $this->getStepType($step),
+                    'success' => true,
+                    'elapsedSeconds' => 0.0,
+                    'output' => null,
+                ];
 
                 continue;
             }
 
-            $startTime = microtime(true);
+            $stepStartTime = microtime(true);
 
             try {
                 $result = $this->executeStep($step, $context);
-                $duration = microtime(true) - $startTime;
+                $duration = microtime(true) - $stepStartTime;
 
-                // Save result to context if saveAs is specified
                 if (isset($step['saveAs'])) {
                     $context->set($step['saveAs'], $result);
                 }
 
-                $results[$index] = $result;
+                $stepResults[] = [
+                    'index' => $index,
+                    'name' => $step['name'] ?? $this->getStepName($step),
+                    'type' => $this->getStepType($step),
+                    'success' => true,
+                    'elapsedSeconds' => round($duration, 3),
+                    'output' => $result,
+                ];
+
                 $this->outputSuccess($duration);
             } catch (\Exception $e) {
-                $duration = microtime(true) - $startTime;
+                $duration = microtime(true) - $stepStartTime;
                 $this->outputFailure($e->getMessage(), $duration);
+
+                $stepResults[] = [
+                    'index' => $index,
+                    'name' => $step['name'] ?? $this->getStepName($step),
+                    'type' => $this->getStepType($step),
+                    'success' => false,
+                    'elapsedSeconds' => round($duration, 3),
+                    'output' => null,
+                ];
 
                 throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage());
             }
         }
 
+        $totalDuration = microtime(true) - $startTime;
+
         return [
             'success' => true,
-            'results' => $results,
-            'context' => $context->all(),
+            'stepCount' => count($steps),
+            'elapsedSeconds' => round($totalDuration, 3),
+            'steps' => $stepResults,
         ];
     }
 
@@ -72,6 +106,8 @@ class WorkflowRunner
      */
     private function executeStep(array $step, Context $context): mixed
     {
+        $this->validateStepTypeKeys($step);
+
         // Method call
         if (isset($step['method'])) {
             return $this->executeMethod($step, $context);
@@ -84,10 +120,41 @@ class WorkflowRunner
 
         // Shell command
         if (isset($step['shell'])) {
-            return $this->executeShell($step, $context);
+            $shellResult = $this->executeShell($step, $context);
+            $stepNum = ($step['_stepIndex'] ?? 0) + 1;
+
+            if (! $shellResult['success']) {
+                throw new \RuntimeException(
+                    "Step {$stepNum} failed: shell command exited with code {$shellResult['exitCode']}"
+                );
+            }
+
+            return $shellResult;
         }
 
-        throw new \InvalidArgumentException('Invalid step: must specify method, task, or shell');
+        throw new \InvalidArgumentException('Step must have exactly one type key');
+    }
+
+    private function validateStepTypeKeys(array $step): void
+    {
+        $typeKeys = self::STEP_TYPE_KEYS;
+        $presentKeys = array_filter($typeKeys, fn($k) => isset($step[$k]));
+        $presentKeys = array_values($presentKeys);
+
+        // Count how many type keys are present
+        $typeKeyCount = count($presentKeys);
+
+        // Find the step number from context if available, else use 1-based index
+        $stepNum = ($step['_stepIndex'] ?? 0) + 1;
+
+        if ($typeKeyCount === 0) {
+            throw new \RuntimeException("Step {$stepNum} has no type key");
+        }
+
+        if ($typeKeyCount > 1) {
+            $typeKeyStr = implode(' and ', $presentKeys);
+            throw new \RuntimeException("Step {$stepNum} must have exactly one type key (has {$typeKeyStr})");
+        }
     }
 
     /**
@@ -162,12 +229,39 @@ class WorkflowRunner
             }
         });
 
+        $exitCode = $process->getExitCode();
+
         return [
-            'exitCode' => $process->getExitCode(),
+            'exitCode' => $exitCode,
             'output' => $output,
             'errorOutput' => $errorOutput,
             'success' => $process->isSuccessful(),
         ];
+    }
+
+    /**
+     * Get step name for display
+     */
+    private function getStepName(array $step): string
+    {
+        return $step['method'] ?? $step['task'] ?? $step['shell'] ?? 'unknown';
+    }
+
+    /**
+     * Get step type string
+     */
+    private function getStepType(array $step): string
+    {
+        if (isset($step['method'])) {
+            return 'method';
+        }
+        if (isset($step['task'])) {
+            return 'task';
+        }
+        if (isset($step['shell'])) {
+            return 'shell';
+        }
+        return 'unknown';
     }
 
     /**
@@ -179,11 +273,8 @@ class WorkflowRunner
             return;
         }
 
-        $type = isset($step['method']) ? 'method'
-            : (isset($step['task']) ? 'task'
-            : 'shell');
-
-        $name = $step['method'] ?? $step['task'] ?? 'shell command';
+        $type = $this->getStepType($step);
+        $name = $step['name'] ?? $this->getStepName($step);
 
         $this->output->writeln('');
         $this->output->writeln("<info>═══ Step {$stepNum}: {$name} [{$type}] ═══</info>");

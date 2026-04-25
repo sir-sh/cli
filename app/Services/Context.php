@@ -78,9 +78,15 @@ class Context
             // Handle default() function
             if (preg_match('/default\(([^,]+),\s*(.+)\)/', $expression, $funcMatches)) {
                 $varName = trim($funcMatches[1]);
-                $defaultValue = trim($funcMatches[2], '\'" ');
+                $rawDefault = trim($funcMatches[2], '\'" ');
+                $value = $this->get($varName, null);
 
-                return (string) $this->get($varName, $defaultValue);
+                // Use default only if variable is not set at all
+                if ($value === null) {
+                    return $rawDefault;
+                }
+
+                return (string) $value;
             }
 
             // Simple variable

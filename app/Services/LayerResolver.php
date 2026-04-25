@@ -16,8 +16,10 @@ class LayerResolver
         $startPath = $startPath ?? getcwd();
         $layers = [];
 
-        // Walk up from current directory
         $current = realpath($startPath);
+        if ($current === false) {
+            return [];
+        }
         $root = '/';
 
         while ($current && $current !== $root) {
@@ -39,7 +41,7 @@ class LayerResolver
             $current = $parent;
         }
 
-        // Check root directory for .sir as well
+        // At root: check for /.sir (only if we haven't already visited it)
         if ($current === $root) {
             $sirPath = $root.'.sir';
             if (is_dir($sirPath) && ! in_array($sirPath, $layers)) {
