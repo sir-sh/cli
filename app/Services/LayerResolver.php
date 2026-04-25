@@ -14,7 +14,12 @@ class LayerResolver
     public function resolve(?string $startPath = null, bool $stopAtGit = false): array
     {
         $startPath = $startPath ?? getcwd();
+        $layers = [];
+
         $current = realpath($startPath);
+        if ($current === false) {
+            return [];
+        }
         $root = '/';
 
         while ($current && $current !== $root) {
