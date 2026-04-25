@@ -14,9 +14,6 @@ class LayerResolver
     public function resolve(?string $startPath = null, bool $stopAtGit = false): array
     {
         $startPath = $startPath ?? getcwd();
-        $layers = [];
-
-        // Walk up from current directory
         $current = realpath($startPath);
         $root = '/';
 

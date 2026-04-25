@@ -26,9 +26,10 @@ test('resolves layers from current directory', function () {
     mkdir($tempDir.'/.sir', 0755, true);
 
     $layers = $this->layerResolver->resolve($tempDir, false);
+    $expectedPath = realpath($tempDir).'/.sir';
 
     expect($layers)->toBeArray();
-    expect($layers)->toContain($tempDir.'/.sir');
+    expect($layers)->toContain($expectedPath);
 
     // Cleanup
     rmdir($tempDir.'/.sir');
@@ -47,11 +48,13 @@ test('stops at git directory when enabled', function () {
     mkdir($subDir.'/.sir', 0755, true);
 
     $layers = $this->layerResolver->resolve($subDir, true);
+    $expectedProjectSir = realpath($subDir).'/.sir';
+    $expectedParentSir = realpath($tempDir).'/.sir';
 
     // Should include both project .sir and parent .sir (at git level)
     // But should NOT go above the .git directory
-    expect($layers)->toContain($subDir.'/.sir');
-    expect($layers)->toContain($tempDir.'/.sir');
+    expect($layers)->toContain($expectedProjectSir);
+    expect($layers)->toContain($expectedParentSir);
 
     // Cleanup
     rmdir($subDir.'/.sir');
