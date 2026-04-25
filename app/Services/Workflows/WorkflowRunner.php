@@ -2,7 +2,6 @@
 
 namespace App\Services\Workflows;
 
-use App\Services\ConditionEvaluator;
 use App\Services\Context;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
@@ -12,8 +11,6 @@ use Symfony\Component\Process\Process;
 
 class WorkflowRunner
 {
-    private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
-
     public function __construct(
         private MethodRegistry $methodRegistry,
         private MethodExecutor $methodExecutor,
@@ -21,16 +18,16 @@ class WorkflowRunner
         private ?OutputStyle $output = null
     ) {}
 
+    private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
+
     /**
      * Run a workflow with given inputs
      *
      * @return array{success: bool, stepCount: int, elapsedSeconds: float, steps: array}
      */
-    public function run(array $workflow, array $inputs, bool $dryRun = false, ?Context $context = null): array
+    public function run(array $workflow, array $inputs, bool $dryRun = false): array
     {
-        if ($context === null) {
-            $context = new Context;
-        }
+        $context = new Context;
         $context->setInputs($inputs);
 
         $steps = $workflow['steps'] ?? [];
@@ -55,26 +52,6 @@ class WorkflowRunner
                 ];
 
                 continue;
-            }
-
-            // Evaluate if condition
-            if (isset($step['if'])) {
-                $evaluator = new \App\Services\ConditionEvaluator($context);
-                $conditionResult = $evaluator->evaluate($step['if']);
-                if (! $conditionResult) {
-                    $this->output?->writeln('<comment>Skipped (condition not met)</comment>');
-                    $stepResults[] = [
-                        'index' => $index,
-                        'name' => $step['name'] ?? $this->getStepName($step),
-                        'type' => $this->getStepType($step),
-                        'success' => true,
-                        'elapsedSeconds' => 0.0,
-                        'output' => null,
-                        'skipped' => true,
-                        'reason' => 'Condition not met',
-                    ];
-                    continue;
-                }
             }
 
             $stepStartTime = microtime(true);
@@ -110,12 +87,6 @@ class WorkflowRunner
                     'output' => null,
                 ];
 
-                // Check continueOnError
-                if (! empty($step['continueOnError'])) {
-                    $this->output?->writeln('<comment>Step failed but continueOnError is true — continuing workflow</comment>');
-                    continue;
-                }
-
                 throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage());
             }
         }
@@ -137,65 +108,59 @@ class WorkflowRunner
     {
         $this->validateStepTypeKeys($step);
 
-        // Handle forEach loop
-        if (isset($step['forEach'])) {
-            $loopExecutor = new LoopExecutor();
-            $items = $loopExecutor->resolveForEach($step, $context);
-
-            $executeStepCallback = function (Context $loopContext) use ($step) {
-                // Re-validate for the loop context (type key already validated)
-                $timeout = $step['timeout'] ?? 0;
-
-                if (isset($step['method'])) {
-                    return $this->executeMethod($step, $loopContext, $timeout);
-                }
-                if (isset($step['task'])) {
-                    return $this->executeTask($step, $loopContext, $timeout);
-                }
-                if (isset($step['shell'])) {
-                    $shellResult = $this->executeShell($step, $loopContext, $timeout);
-                    if (! $shellResult['success']) {
-                        throw new \RuntimeException("Shell command exited with code {$shellResult['exitCode']}");
-                    }
-                    return $shellResult;
-                }
-                throw new \InvalidArgumentException('Loop step has no executable type');
-            };
-
-            $loopResult = $loopExecutor->executeLoop($step, $items, $context, $executeStepCallback);
-
-            // If saveAs is set, store the loop results
-            if (isset($step['saveAs'])) {
-                $context->set($step['saveAs'], $loopResult);
-            }
-
-            return $loopResult;
-        }
-
-        $timeout = $step['timeout'] ?? 0;
-
         // Method call
         if (isset($step['method'])) {
-            return $this->executeMethod($step, $context, $timeout);
+            return $this->executeMethod($step, $context);
         }
 
         // Task call
         if (isset($step['task'])) {
-            return $this->executeTask($step, $context, $timeout);
+            return $this->executeTask($step, $context);
         }
 
         // Shell command
         if (isset($step['shell'])) {
-            return $this->executeShell($step, $context, $timeout);
+            $shellResult = $this->executeShell($step, $context);
+            $stepNum = ($step['_stepIndex'] ?? 0) + 1;
+
+            if (! $shellResult['success']) {
+                throw new \RuntimeException(
+                    "Step {$stepNum} failed: shell command exited with code {$shellResult['exitCode']}"
+                );
+            }
+
+            return $shellResult;
         }
 
-        throw new \InvalidArgumentException('Invalid step: must specify method, task, or shell');
+        throw new \InvalidArgumentException('Step must have exactly one type key');
+    }
+
+    private function validateStepTypeKeys(array $step): void
+    {
+        $typeKeys = self::STEP_TYPE_KEYS;
+        $presentKeys = array_filter($typeKeys, fn($k) => isset($step[$k]));
+        $presentKeys = array_values($presentKeys);
+
+        // Count how many type keys are present
+        $typeKeyCount = count($presentKeys);
+
+        // Find the step number from context if available, else use 1-based index
+        $stepNum = ($step['_stepIndex'] ?? 0) + 1;
+
+        if ($typeKeyCount === 0) {
+            throw new \RuntimeException("Step {$stepNum} has no type key");
+        }
+
+        if ($typeKeyCount > 1) {
+            $typeKeyStr = implode(' and ', $presentKeys);
+            throw new \RuntimeException("Step {$stepNum} must have exactly one type key (has {$typeKeyStr})");
+        }
     }
 
     /**
      * Execute a method call
      */
-    private function executeMethod(array $step, Context $context, int $timeout = 0): array
+    private function executeMethod(array $step, Context $context): array
     {
         $methodName = $step['method'];
         $args = $step['with'] ?? [];
@@ -219,7 +184,7 @@ class WorkflowRunner
     /**
      * Execute a task call
      */
-    private function executeTask(array $step, Context $context, int $timeout = 0): mixed
+    private function executeTask(array $step, Context $context): mixed
     {
         $taskName = $step['task'];
         $args = $step['with'] ?? [];
@@ -243,7 +208,7 @@ class WorkflowRunner
     /**
      * Execute a shell command
      */
-    private function executeShell(array $step, Context $context, int $timeout = 0): array
+    private function executeShell(array $step, Context $context): array
     {
         $command = $step['shell'];
         $resolvedCommand = $context->resolveTemplate($command);
@@ -264,8 +229,10 @@ class WorkflowRunner
             }
         });
 
+        $exitCode = $process->getExitCode();
+
         return [
-            'exitCode' => $process->getExitCode(),
+            'exitCode' => $exitCode,
             'output' => $output,
             'errorOutput' => $errorOutput,
             'success' => $process->isSuccessful(),
@@ -336,30 +303,5 @@ class WorkflowRunner
 
         $this->output->writeln('<error>✗ Failed after '.round($duration, 2).'s</error>');
         $this->output->writeln("<error>{$message}</error>");
-    }
-
-    /**
-     * Validate that a step has exactly one type key (method, task, or shell)
-     */
-    private function validateStepTypeKeys(array $step): void
-    {
-        $typeKeys = self::STEP_TYPE_KEYS;
-        $presentKeys = array_filter($typeKeys, fn($k) => isset($step[$k]));
-        $presentKeys = array_values($presentKeys);
-
-        // Count how many type keys are present
-        $typeKeyCount = count($presentKeys);
-
-        // Find the step number from context if available, else use 1-based index
-        $stepNum = ($step['_stepIndex'] ?? 0) + 1;
-
-        if ($typeKeyCount === 0) {
-            throw new \RuntimeException("Step {$stepNum} has no type key");
-        }
-
-        if ($typeKeyCount > 1) {
-            $typeKeyStr = implode(' and ', $presentKeys);
-            throw new \RuntimeException("Step {$stepNum} must have exactly one type key (has {$typeKeyStr})");
-        }
     }
 }

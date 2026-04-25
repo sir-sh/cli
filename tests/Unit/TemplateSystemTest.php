@@ -299,54 +299,13 @@ test('S004-EC-006: default with comma inside fallback literal', function () {
     expect($result)->toBe('a,b');
 });
 
-test('S012-EC-001: nested property access via dot notation', function () {
-    // S012: Nested property access is now supported
+test('S004-EC-007: nested property access (dot notation) not supported in v1', function () {
+    // v1 simple form: no dot notation
     $this->context->set('ws', ['path' => '/tmp/workspace']);
     $result = $this->context->resolveTemplate('{{ws.path}}');
 
-    // "ws.path" resolves to ws.path → /tmp/workspace
-    expect($result)->toBe('/tmp/workspace');
-});
-
-test('S012-EC-002: deeply nested property access', function () {
-    $this->context->set('data', [
-        'user' => [
-            'profile' => [
-                'name' => 'John'
-            ]
-        ]
-    ]);
-    $result = $this->context->resolveTemplate('{{data.user.profile.name}}');
-
-    expect($result)->toBe('John');
-});
-
-test('S012-EC-003: missing nested property returns empty string', function () {
-    $this->context->set('data', ['key' => 'value']);
-    $result = $this->context->resolveTemplate('{{data.missing.property}}');
-
+    // "ws.path" as a variable name doesn't exist → empty string
     expect($result)->toBe('');
-});
-
-test('S012-EC-004: array index access via dot notation', function () {
-    $this->context->set('items', ['first', 'second', 'third']);
-    $result = $this->context->resolveTemplate('{{items.1}}');
-
-    expect($result)->toBe('second');
-});
-
-test('S012-EC-005: default with nested property as first arg', function () {
-    $this->context->set('config', ['db' => ['host' => 'localhost']]);
-    $result = $this->context->resolveTemplate("{{default(config.db.host, '127.0.0.1')}}");
-
-    expect($result)->toBe('localhost');
-});
-
-test('S012-EC-006: default with missing nested property uses fallback', function () {
-    $this->context->set('config', ['db' => ['port' => 5432]]);
-    $result = $this->context->resolveTemplate("{{default(config.db.missing, 'default')}}");
-
-    expect($result)->toBe('default');
 });
 
 test('S004-EC-008: unclosed template expression returns literal', function () {
