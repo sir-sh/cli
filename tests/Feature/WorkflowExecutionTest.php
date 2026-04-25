@@ -121,7 +121,7 @@ YAML;
     chdir($oldCwd);
 
     expect($result['success'])->toBeTrue();
-    expect($result['steps'][0])->toHaveKey('output');
+    expect($result['steps'][0]['output'])->toHaveKey('output');
     expect($result['steps'][0]['output']['output'])->toContain('test output');
 
     // Cleanup

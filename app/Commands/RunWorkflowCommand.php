@@ -6,6 +6,8 @@ use App\Services\ConfigLoader;
 use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
+use App\Services\Remote\RemoteExecutorFactory;
+use App\Services\Remote\RemoteExecutionException;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
@@ -13,7 +15,14 @@ use LaravelZero\Framework\Commands\Command;
 
 class RunWorkflowCommand extends Command
 {
-    protected $signature = 'run {workflow} {--dry-run : Show what would be executed} {--yes : Skip confirmations} {--non-interactive : Run without prompts}';
+    protected $signature = 'run {workflow}
+                            {--dry-run : Show what would be executed}
+                            {--yes : Skip confirmations}
+                            {--non-interactive : Run without prompts}
+                            {--remote= : Remote target URI (e.g., ssh://user@host, docker://image)}
+                            {--remote-config= : Path to remote configuration YAML file}
+                            {--follow : Stream remote output in real-time}
+                            {--timeout= : Maximum execution time in seconds}';
 
     protected $description = 'Execute a workflow';
 
@@ -27,6 +36,20 @@ class RunWorkflowCommand extends Command
     ): int {
         $workflowName = $this->argument('workflow');
         $dryRun = $this->option('dry-run');
+        $remoteUri = $this->option('remote');
+        $remoteConfigPath = $this->option('remote-config');
+        $follow = $this->option('follow');
+
+        // Handle remote execution if specified
+        if ($remoteUri || $remoteConfigPath) {
+            return $this->handleRemoteExecution(
+                $workflowName,
+                $workflowLoader,
+                $remoteUri,
+                $remoteConfigPath,
+                $follow
+            );
+        }
 
         // Create workflow runner with output
         $workflowRunner = new WorkflowRunner(
@@ -117,5 +140,91 @@ class RunWorkflowCommand extends Command
         }
 
         return $inputs;
+    }
+
+    private function handleRemoteExecution(
+        string $workflowName,
+        WorkflowLoader $workflowLoader,
+        ?string $remoteUri,
+        ?string $remoteConfigPath,
+        bool $follow
+    ): int {
+        $this->info("Running workflow remotely: {$workflowName}");
+
+        // Load workflow
+        $workflow = $workflowLoader->load($workflowName);
+
+        if (! $workflow) {
+            $this->error("Workflow not found: {$workflowName}");
+
+            return self::FAILURE;
+        }
+
+        // Gather inputs
+        $inputs = $this->gatherInputs($workflow);
+
+        try {
+            // Create executor factory
+            $factory = new RemoteExecutorFactory();
+
+            // Resolve executor from URI or config file
+            if ($remoteConfigPath && file_exists($remoteConfigPath)) {
+                $config = $this->loadRemoteConfig($remoteConfigPath);
+                $remoteName = $remoteUri ?? 'default';
+                if (! isset($config['remotes'][$remoteName])) {
+                    $this->error("Remote '{$remoteName}' not found in config");
+
+                    return self::FAILURE;
+                }
+                $executor = $factory->fromConfig($remoteName, $config['remotes'][$remoteName]);
+            } elseif ($remoteUri) {
+                $executor = $factory->fromUri($remoteUri);
+            } else {
+                $this->error('Either --remote or --remote-config must be specified');
+
+                return self::FAILURE;
+            }
+
+            // Check availability
+            if (! $executor->isAvailable()) {
+                $this->error("Remote executor is not available: {$executor->getType()}");
+
+                return self::FAILURE;
+            }
+
+            $this->info("Using remote: {$executor->getType()}");
+
+            // Execute remotely
+            $result = $executor->execute($workflow, $inputs);
+
+            // Display results
+            if ($result['success'] ?? false) {
+                $this->newLine();
+                $this->info('✓ Remote workflow completed successfully');
+
+                return self::SUCCESS;
+            } else {
+                $this->newLine();
+                $this->error('✗ Remote workflow failed: '.($result['output'] ?? 'Unknown error'));
+
+                return self::FAILURE;
+            }
+        } catch (RemoteExecutionException $e) {
+            $this->error('Remote execution failed: '.$e->getMessage());
+
+            return self::FAILURE;
+        } catch (\Exception $e) {
+            $this->error('Failed to execute remotely: '.$e->getMessage());
+
+            return self::FAILURE;
+        }
+    }
+
+    private function loadRemoteConfig(string $path): array
+    {
+        $content = file_get_contents($path);
+        $parsed = \Symfony\Component\Yaml\Yaml::parse($content);
+
+        return is_array($parsed) ? $parsed : [];
     }
 }

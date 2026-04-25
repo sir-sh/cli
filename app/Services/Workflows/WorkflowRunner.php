@@ -2,6 +2,7 @@
 
 namespace App\Services\Workflows;
 
+use App\Services\ConditionEvaluator;
 use App\Services\Context;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
@@ -11,14 +12,14 @@ use Symfony\Component\Process\Process;
 
 class WorkflowRunner
 {
+    private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
+
     public function __construct(
         private MethodRegistry $methodRegistry,
         private MethodExecutor $methodExecutor,
         private TaskRegistry $taskRegistry,
         private ?OutputStyle $output = null
     ) {}
-
-    private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
 
     /**
      * Run a workflow with given inputs
@@ -75,6 +76,7 @@ class WorkflowRunner
                     continue;
                 }
             }
+
             $stepStartTime = microtime(true);
 
             try {
@@ -184,41 +186,10 @@ class WorkflowRunner
 
         // Shell command
         if (isset($step['shell'])) {
-            $shellResult = $this->executeShell($step, $context, $timeout);
-            $stepNum = ($step['_stepIndex'] ?? 0) + 1;
-
-            if (! $shellResult['success']) {
-                throw new \RuntimeException(
-                    "Step {$stepNum} failed: shell command exited with code {$shellResult['exitCode']}"
-                );
-            }
-
-            return $shellResult;
+            return $this->executeShell($step, $context, $timeout);
         }
 
-        throw new \InvalidArgumentException('Step must have exactly one type key');
-    }
-
-    private function validateStepTypeKeys(array $step): void
-    {
-        $typeKeys = self::STEP_TYPE_KEYS;
-        $presentKeys = array_filter($typeKeys, fn($k) => isset($step[$k]));
-        $presentKeys = array_values($presentKeys);
-
-        // Count how many type keys are present
-        $typeKeyCount = count($presentKeys);
-
-        // Find the step number from context if available, else use 1-based index
-        $stepNum = ($step['_stepIndex'] ?? 0) + 1;
-
-        if ($typeKeyCount === 0) {
-            throw new \RuntimeException("Step {$stepNum} has no type key");
-        }
-
-        if ($typeKeyCount > 1) {
-            $typeKeyStr = implode(' and ', $presentKeys);
-            throw new \RuntimeException("Step {$stepNum} must have exactly one type key (has {$typeKeyStr})");
-        }
+        throw new \InvalidArgumentException('Invalid step: must specify method, task, or shell');
     }
 
     /**
@@ -278,7 +249,7 @@ class WorkflowRunner
         $resolvedCommand = $context->resolveTemplate($command);
 
         $process = Process::fromShellCommandline($resolvedCommand);
-        $process->setTimeout($timeout > 0 ? $timeout : null);
+        $process->setTimeout(null);
 
         $output = '';
         $errorOutput = '';
@@ -293,10 +264,8 @@ class WorkflowRunner
             }
         });
 
-        $exitCode = $process->getExitCode();
-
         return [
-            'exitCode' => $exitCode,
+            'exitCode' => $process->getExitCode(),
             'output' => $output,
             'errorOutput' => $errorOutput,
             'success' => $process->isSuccessful(),
@@ -367,5 +336,30 @@ class WorkflowRunner
 
         $this->output->writeln('<error>✗ Failed after '.round($duration, 2).'s</error>');
         $this->output->writeln("<error>{$message}</error>");
+    }
+
+    /**
+     * Validate that a step has exactly one type key (method, task, or shell)
+     */
+    private function validateStepTypeKeys(array $step): void
+    {
+        $typeKeys = self::STEP_TYPE_KEYS;
+        $presentKeys = array_filter($typeKeys, fn($k) => isset($step[$k]));
+        $presentKeys = array_values($presentKeys);
+
+        // Count how many type keys are present
+        $typeKeyCount = count($presentKeys);
+
+        // Find the step number from context if available, else use 1-based index
+        $stepNum = ($step['_stepIndex'] ?? 0) + 1;
+
+        if ($typeKeyCount === 0) {
+            throw new \RuntimeException("Step {$stepNum} has no type key");
+        }
+
+        if ($typeKeyCount > 1) {
+            $typeKeyStr = implode(' and ', $presentKeys);
+            throw new \RuntimeException("Step {$stepNum} must have exactly one type key (has {$typeKeyStr})");
+        }
     }
 }
