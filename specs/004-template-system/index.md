@@ -6,7 +6,7 @@
 | Feature | Template expression resolution in workflow YAML values |
 | Date | 2026-04-23 |
 | Status | Draft |
-| Source | `cli/app/Services/Context.php` |
+| Source | `app/Services/Context.php` |
 
 ## Overview
 

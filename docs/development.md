@@ -286,7 +286,6 @@ Run `sir where` to see loaded layers.
 ## Project Structure
 
 ```
-sir-cli/
 ├── app/
 │   ├── Commands/         # CLI commands
 │   ├── Providers/        # Service providers
