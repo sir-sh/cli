@@ -1,0 +1,50 @@
+{
+  "method": "install",
+  "description": "Install npm dependencies",
+  "args": {
+    "package": {
+      "type": "string",
+      "required": false,
+      "description": "Package(s) to install (default: all from package.json)"
+    },
+    "saveDev": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Save as dev dependency"
+    },
+    "saveExact": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Save with exact version"
+    },
+    "global": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Install globally"
+    },
+    "workspaces": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Install workspaces"
+    }
+  },
+  "returns": {
+    "installed": {
+      "type": "array",
+      "description": "List of installed packages"
+    }
+  },
+  "effects": {
+    "network": true,
+    "writes": ["node_modules", "package-lock.json"],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "npm install {{#if package}}{{shellQuote package}}{{/if}} {{#if saveDev}}--save-dev{{/if}} {{#if saveExact}}--save-exact{{/if}} {{#if global}}-g{{/if}} {{#if workspaces}}--workspaces{{/if}}"
+  }
+}

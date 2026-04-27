@@ -1,0 +1,13 @@
+{
+  "name": "sir-shell",
+  "namespace": "shell",
+  "version": "1.0.0",
+  "description": "Common shell operations for sir.sh workflows",
+  "author": "sir.sh",
+  "methods": [
+    "exec",
+    "cd",
+    "env",
+    "exists"
+  ]
+}

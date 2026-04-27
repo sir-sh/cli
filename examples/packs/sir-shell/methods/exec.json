@@ -1,0 +1,44 @@
+{
+  "method": "exec",
+  "description": "Execute a shell command",
+  "args": {
+    "command": {
+      "type": "string",
+      "required": true,
+      "description": "Shell command to execute"
+    },
+    "cwd": {
+      "type": "path",
+      "required": false,
+      "description": "Working directory"
+    },
+    "timeout": {
+      "type": "integer",
+      "required": false,
+      "description": "Timeout in seconds"
+    }
+  },
+  "returns": {
+    "stdout": {
+      "type": "string",
+      "description": "Standard output"
+    },
+    "stderr": {
+      "type": "string",
+      "description": "Standard error"
+    },
+    "exitCode": {
+      "type": "integer",
+      "description": "Exit code"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "{{command}}"
+  }
+}

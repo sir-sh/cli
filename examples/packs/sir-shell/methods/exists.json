@@ -1,0 +1,31 @@
+{
+  "method": "exists",
+  "description": "Check if file or directory exists",
+  "args": {
+    "path": {
+      "type": "path",
+      "required": true,
+      "description": "Path to check"
+    },
+    "type": {
+      "type": "string",
+      "required": false,
+      "description": "Type: file, dir, or link"
+    }
+  },
+  "returns": {
+    "exists": {
+      "type": "boolean",
+      "description": "Whether path exists"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "{{#if type}}test -{{type}} {{shellQuote path}} && echo true || echo false{{else}}test -e {{shellQuote path}} && echo true || echo false{{/if}}"
+  }
+}

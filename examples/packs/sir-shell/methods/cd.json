@@ -1,0 +1,26 @@
+{
+  "method": "cd",
+  "description": "Change working directory",
+  "args": {
+    "path": {
+      "type": "path",
+      "required": true,
+      "description": "Directory to change to"
+    }
+  },
+  "returns": {
+    "path": {
+      "type": "path",
+      "description": "New working directory"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "cd {{shellQuote path}}"
+  }
+}

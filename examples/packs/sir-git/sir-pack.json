@@ -5,6 +5,10 @@
   "description": "Git operations pack for sir.sh",
   "author": "sir.sh",
   "methods": [
-    "clone"
+    "clone",
+    "commit",
+    "push",
+    "status",
+    "branch"
   ]
 }

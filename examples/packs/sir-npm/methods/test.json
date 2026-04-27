@@ -1,0 +1,42 @@
+{
+  "method": "test",
+  "description": "Run npm test script",
+  "args": {
+    "coverage": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Generate coverage report"
+    },
+    "watch": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Run in watch mode"
+    },
+    "filter": {
+      "type": "string",
+      "required": false,
+      "description": "Filter tests by pattern"
+    }
+  },
+  "returns": {
+    "passed": {
+      "type": "integer",
+      "description": "Number of tests passed"
+    },
+    "failed": {
+      "type": "integer",
+      "description": "Number of tests failed"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": ["coverage"],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "npm test {{#if coverage}}-- --coverage{{/if}} {{#if watch}}-- --watch{{/if}} {{#if filter}}-- --filter={{shellQuote filter}}{{/if}}"
+  }
+}

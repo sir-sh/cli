@@ -1,0 +1,41 @@
+{
+  "method": "status",
+  "description": "Show working tree status",
+  "args": {
+    "short": {
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Use short format"
+    },
+    "branch": {
+      "type": "boolean",
+      "required": false,
+      "default": true,
+      "description": "Show branch info"
+    }
+  },
+  "returns": {
+    "clean": {
+      "type": "boolean",
+      "description": "Whether working tree is clean"
+    },
+    "branch": {
+      "type": "string",
+      "description": "Current branch name"
+    },
+    "changes": {
+      "type": "object",
+      "description": "Counts of changed files by type"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "git status {{#if short}}--short{{/if}} {{#if branch}}-sb{{else}}-s{{/if}}"
+  }
+}

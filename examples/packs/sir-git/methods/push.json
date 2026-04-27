@@ -1,0 +1,38 @@
+{
+  "method": "push",
+  "description": "Push commits to remote",
+  "args": {
+    "remote": {
+      "type": "string",
+      "required": false,
+      "default": "origin",
+      "description": "Remote name"
+    },
+    "branch": {
+      "type": "string",
+      "required": false,
+      "description": "Branch to push (default: current)"
+    },
+    "tags": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Push tags"
+    }
+  },
+  "returns": {
+    "pushed": {
+      "type": "boolean",
+      "description": "Whether push succeeded"
+    }
+  },
+  "effects": {
+    "network": true,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "git push {{remote}} {{#if branch}}{{branch}}{{else}}--all{{/if}} {{#if tags}}--tags{{/if}}"
+  }
+}

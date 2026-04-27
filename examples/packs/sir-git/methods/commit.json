@@ -1,0 +1,37 @@
+{
+  "method": "commit",
+  "description": "Stage and commit changes",
+  "args": {
+    "message": {
+      "type": "string",
+      "required": true,
+      "description": "Commit message"
+    },
+    "files": {
+      "type": "array",
+      "required": false,
+      "description": "Files to commit (default: all)"
+    },
+    "allowEmpty": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Allow empty commit"
+    }
+  },
+  "returns": {
+    "sha": {
+      "type": "string",
+      "description": "Commit SHA"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [".git"],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "git {{#if files}}{{#each files}}add {{shellQuote(this)}} {{/each}}{{else}}add -A{{/if}} && git commit {{#if allowEmpty}}--allow-empty{{/if}} -m {{shellQuote(message)}}"
+  }
+}

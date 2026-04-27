@@ -1,0 +1,54 @@
+{
+  "method": "branch",
+  "description": "List, create, or delete branches",
+  "args": {
+    "name": {
+      "type": "string",
+      "required": false,
+      "description": "Branch name (omit to list)"
+    },
+    "delete": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Delete the branch"
+    },
+    "force": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Force delete unmerged branch"
+    },
+    "create": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Create the branch"
+    },
+    "checkout": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Checkout after creating"
+    }
+  },
+  "returns": {
+    "branches": {
+      "type": "array",
+      "description": "List of branch names (for list operation)"
+    },
+    "current": {
+      "type": "string",
+      "description": "Current branch"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [".git"],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "{{#if delete}}git branch {{#if force}}-D{{else}}-d{{/if}} {{shellQuote name}}{{else}}{{#if name}}git branch {{#if create}}{{#if checkout}}-c{{else}}b{{/if}}{{/if}} {{shellQuote name}}{{else}}git branch -a{{/if}}{{/if}}"
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "method": "run",
+  "description": "Run npm script",
+  "args": {
+    "script": {
+      "type": "string",
+      "required": true,
+      "description": "Script name to run"
+    },
+    "args": {
+      "type": "string",
+      "required": false,
+      "description": "Additional arguments to pass to script"
+    }
+  },
+  "returns": {
+    "exitCode": {
+      "type": "integer",
+      "description": "Exit code of the script"
+    }
+  },
+  "effects": {
+    "network": false,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "npm run {{shellQuote script}} {{#if args}}{{args}}{{/if}}"
+  }
+}

@@ -1,0 +1,43 @@
+{
+  "method": "publish",
+  "description": "Publish package to npm registry",
+  "args": {
+    "tag": {
+      "type": "string",
+      "required": false,
+      "default": "latest",
+      "description": "Distribution tag"
+    },
+    "access": {
+      "type": "string",
+      "required": false,
+      "default": "public",
+      "description": "Access level (public or restricted)"
+    },
+    "dryRun": {
+      "type": "boolean",
+      "required": false,
+      "default": false,
+      "description": "Perform a dry run"
+    }
+  },
+  "returns": {
+    "published": {
+      "type": "boolean",
+      "description": "Whether publish succeeded"
+    },
+    "version": {
+      "type": "string",
+      "description": "Published version"
+    }
+  },
+  "effects": {
+    "network": true,
+    "writes": [],
+    "interactive": false
+  },
+  "impl": {
+    "type": "shell",
+    "command": "npm publish {{#if tag}}--tag {{shellQuote tag}}{{/if}} {{#if access}}--access {{shellQuote access}}{{/if}} {{#if dryRun}}--dry-run{{/if}}"
+  }
+}

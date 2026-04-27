@@ -1,0 +1,13 @@
+{
+  "name": "sir-npm",
+  "namespace": "npm",
+  "version": "1.0.0",
+  "description": "NPM package management pack for sir.sh workflows",
+  "author": "sir.sh",
+  "methods": [
+    "install",
+    "run",
+    "test",
+    "publish"
+  ]
+}
