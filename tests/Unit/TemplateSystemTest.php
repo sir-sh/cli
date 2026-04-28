@@ -299,13 +299,13 @@ test('S004-EC-006: default with comma inside fallback literal', function () {
     expect($result)->toBe('a,b');
 });
 
-test('S004-EC-007: nested property access (dot notation) not supported in v1', function () {
-    // v1 simple form: no dot notation
+test('S004-EC-007: nested property access (dot notation) supported in S012', function () {
+    // S012: dot notation resolves to nested property access
     $this->context->set('ws', ['path' => '/tmp/workspace']);
     $result = $this->context->resolveTemplate('{{ws.path}}');
 
-    // "ws.path" as a variable name doesn't exist → empty string
-    expect($result)->toBe('');
+    // "ws.path" resolves to nested property ws.path = '/tmp/workspace'
+    expect($result)->toBe('/tmp/workspace');
 });
 
 test('S004-EC-008: unclosed template expression returns literal', function () {

@@ -59,8 +59,31 @@ class Context
     }
 
     /**
+     * Get a variable by path with nested property support
+     * Supports dot notation: "clone.path" or "user.name"
+     * Supports array index: "items.0"
+     * Missing properties resolve to null (caller decides fallback)
+     */
+    public function getPath(string $path): mixed
+    {
+        $parts = explode('.', $path);
+        $value = $this->variables;
+
+        foreach ($parts as $part) {
+            if (is_array($value) && array_key_exists($part, $value)) {
+                $value = $value[$part];
+            } else {
+                return null;
+            }
+        }
+
+        return $value;
+    }
+
+    /**
      * Resolve template string with variables
-     * Supports {{varName}} syntax
+     * Supports {{varName}} and {{varName.nested.property}} syntax
+     * Missing nested properties resolve to empty string
      */
     public function resolveTemplate(string $template): string
     {
@@ -69,19 +92,19 @@ class Context
 
             // Handle shellQuote() function
             if (preg_match('/shellQuote\(([^)]+)\)/', $expression, $funcMatches)) {
-                $varName = trim($funcMatches[1]);
-                $value = $this->get($varName, '');
+                $varPath = trim($funcMatches[1]);
+                $value = $this->resolvePath($varPath);
 
                 return escapeshellarg((string) $value);
             }
 
             // Handle default() function
             if (preg_match('/default\(([^,]+),\s*(.+)\)/', $expression, $funcMatches)) {
-                $varName = trim($funcMatches[1]);
+                $varPath = trim($funcMatches[1]);
                 $rawDefault = trim($funcMatches[2], '\'" ');
-                $value = $this->get($varName, null);
+                $value = $this->resolvePath($varPath, false);
 
-                // Use default only if variable is not set at all
+                // Use default only if variable path resolves to null
                 if ($value === null) {
                     return $rawDefault;
                 }
@@ -89,8 +112,17 @@ class Context
                 return (string) $value;
             }
 
-            // Simple variable
-            return (string) $this->get($expression, '');
+            // Simple or nested variable
+            return (string) $this->resolvePath($expression);
         }, $template);
+    }
+
+    /**
+     * Resolve a variable path to a value, returning empty string if not found
+     */
+    private function resolvePath(string $path, bool $useEmptyString = true): string|null
+    {
+        $value = $this->getPath($path);
+        return $value !== null ? (string) $value : ($useEmptyString ? '' : null);
     }
 }

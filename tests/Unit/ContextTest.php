@@ -77,3 +77,72 @@ test('returns all variables', function () {
     expect($all)->toHaveKey('baz');
     expect($all['foo'])->toBe('bar');
 });
+
+test('gets nested property with dot notation', function () {
+    $this->context->set('clone', ['path' => '/tmp/repo', 'branch' => 'main']);
+
+    expect($this->context->getPath('clone.path'))->toBe('/tmp/repo');
+    expect($this->context->getPath('clone.branch'))->toBe('main');
+});
+
+test('returns null for missing nested property', function () {
+    $this->context->set('user', ['name' => 'John']);
+
+    expect($this->context->getPath('user.age'))->toBeNull();
+    expect($this->context->getPath('missing.property'))->toBeNull();
+});
+
+test('resolves nested property in template', function () {
+    $this->context->set('clone', ['path' => '/tmp/repo']);
+
+    $result = $this->context->resolveTemplate('Cloned to: {{clone.path}}');
+
+    expect($result)->toBe('Cloned to: /tmp/repo');
+});
+
+test('resolves deep nested property', function () {
+    $this->context->set('user', ['profile' => ['name' => 'John', 'age' => 30]]);
+
+    expect($this->context->getPath('user.profile.name'))->toBe('John');
+    expect($this->context->getPath('user.profile.age'))->toBe(30);
+});
+
+test('resolves array index access', function () {
+    $this->context->set('items', ['first', 'second', 'third']);
+
+    expect($this->context->getPath('items.0'))->toBe('first');
+    expect($this->context->getPath('items.1'))->toBe('second');
+    expect($this->context->getPath('items.2'))->toBe('third');
+});
+
+test('missing nested property resolves to empty string in template', function () {
+    $this->context->set('user', ['name' => 'John']);
+
+    $result = $this->context->resolveTemplate('Age: {{user.age}}');
+
+    expect($result)->toBe('Age: ');
+});
+
+test('shellQuote with nested property', function () {
+    $this->context->set('file', ['path' => 'my file.txt']);
+
+    $result = $this->context->resolveTemplate('cat {{shellQuote(file.path)}}');
+
+    expect($result)->toContain("'my file.txt'");
+});
+
+test('default with nested property when missing', function () {
+    $this->context->set('config', ['debug' => true]);
+
+    $result = $this->context->resolveTemplate('{{default(config.missing, "fallback")}}');
+
+    expect($result)->toBe('fallback');
+});
+
+test('default with nested property when present', function () {
+    $this->context->set('config', ['debug' => true]);
+
+    $result = $this->context->resolveTemplate('{{default(config.debug, "false")}}');
+
+    expect($result)->toBe('1');
+});
