@@ -100,6 +100,7 @@ class RunWorkflowCommand extends Command
         } catch (\Exception $e) {
             $this->newLine();
             $this->error('✗ Workflow failed: '.$e->getMessage());
+            $this->line('Resolve the error, then rerun the original command from the same directory.');
 
             return self::FAILURE;
         }
