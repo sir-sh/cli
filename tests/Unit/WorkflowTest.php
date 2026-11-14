@@ -3,6 +3,7 @@
 namespace Tests\Unit;
 
 use App\Services\Context;
+use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
@@ -10,7 +11,7 @@ use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
 
 beforeEach(function () {
-    $this->layerResolver = new \App\Services\LayerResolver;
+    $this->layerResolver = new LayerResolver;
     $this->workflowLoader = new WorkflowLoader($this->layerResolver);
     $this->taskRegistry = new TaskRegistry;
     $this->methodRegistry = new MethodRegistry($this->layerResolver);

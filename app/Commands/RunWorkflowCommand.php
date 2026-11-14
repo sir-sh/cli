@@ -12,6 +12,7 @@ use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
 use LaravelZero\Framework\Commands\Command;
+use Symfony\Component\Yaml\Yaml;
 
 class RunWorkflowCommand extends Command
 {
@@ -229,7 +230,7 @@ class RunWorkflowCommand extends Command
     private function loadRemoteConfig(string $path): array
     {
         $content = file_get_contents($path);
-        $parsed = \Symfony\Component\Yaml\Yaml::parse($content);
+        $parsed = Yaml::parse($content);
 
         return is_array($parsed) ? $parsed : [];
     }

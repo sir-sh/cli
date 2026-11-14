@@ -9,7 +9,9 @@ use App\Services\Tasks\BuiltIn\WorkspaceTempTask;
 use App\Services\Tasks\Files\FilesWriteMdTask;
 use App\Services\Tasks\Files\FilesWriteTask;
 use App\Services\Tasks\Git\GitCloneTask;
+use App\Services\Tasks\TaskInterface;
 use App\Services\Tasks\TaskRegistry;
+use Symfony\Component\Process\Process;
 
 beforeEach(function () {
     $this->registry = new TaskRegistry;
@@ -85,7 +87,7 @@ test('S007-FR-001: all built-in tasks implement TaskInterface', function () {
     ];
 
     foreach ($tasks as $task) {
-        expect($task)->toBeInstanceOf(\App\Services\Tasks\TaskInterface::class);
+        expect($task)->toBeInstanceOf(TaskInterface::class);
     }
 });
 
@@ -143,7 +145,7 @@ test('S007-FR-004.b: created directory has 0755 permissions', function () {
 
     $perms = substr(sprintf('%o', fileperms($result['workspace'])), -4);
     expect($perms)->toBe('0755');
-});
+})->skip(PHP_OS_FAMILY === 'Windows', 'POSIX directory modes are unavailable');
 
 test('S007-FR-004: custom prefix argument used', function () {
     $task = new WorkspaceTempTask;
@@ -420,12 +422,12 @@ test('S007-FR-018: coderabbit falls back to gh-cli when coderabbit not available
     $task = new CodeRabbitReviewTask;
 
     // Check if gh is installed
-    $process = new \Symfony\Component\Process\Process(['which', 'gh']);
+    $process = new Process(['which', 'gh']);
     $process->run();
     $ghAvailable = $process->isSuccessful();
 
     // Check if coderabbit is installed
-    $process2 = new \Symfony\Component\Process\Process(['which', 'coderabbit']);
+    $process2 = new Process(['which', 'coderabbit']);
     $process2->run();
     $crAvailable = $process2->isSuccessful();
 
@@ -447,14 +449,14 @@ test('S007-FR-018: coderabbit falls back to gh-cli when coderabbit not available
 });
 
 test('S007-FR-018.a: gh-cli fallback includes method and markdown', function () {
-    $process = new \Symfony\Component\Process\Process(['which', 'coderabbit']);
+    $process = new Process(['which', 'coderabbit']);
     $process->run();
     if ($process->isSuccessful()) {
         // coderabbit available, skip this specific fallback test
         return;
     }
 
-    $process2 = new \Symfony\Component\Process\Process(['which', 'gh']);
+    $process2 = new Process(['which', 'gh']);
     $process2->run();
     if (! $process2->isSuccessful()) {
         return;
@@ -468,7 +470,7 @@ test('S007-FR-018.a: gh-cli fallback includes method and markdown', function () 
 });
 
 test('S007-IF-008: coderabbit output method is coderabbit-cli or gh-cli', function () {
-    $process = new \Symfony\Component\Process\Process(['which', 'coderabbit']);
+    $process = new Process(['which', 'coderabbit']);
     $process->run();
     $crAvailable = $process->isSuccessful();
 

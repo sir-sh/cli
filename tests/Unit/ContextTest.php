@@ -49,7 +49,7 @@ test('resolves template with shell quote', function () {
 
     $result = $this->context->resolveTemplate('cat {{shellQuote(file)}}');
 
-    expect($result)->toContain("'test file.txt'");
+    expect($result)->toBe('cat '.escapeshellarg('test file.txt'));
 });
 
 test('resolves template with default function', function () {
@@ -128,7 +128,7 @@ test('shellQuote with nested property', function () {
 
     $result = $this->context->resolveTemplate('cat {{shellQuote(file.path)}}');
 
-    expect($result)->toContain("'my file.txt'");
+    expect($result)->toBe('cat '.escapeshellarg('my file.txt'));
 });
 
 test('default with nested property when missing', function () {

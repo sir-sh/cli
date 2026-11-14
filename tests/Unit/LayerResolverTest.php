@@ -9,9 +9,12 @@ beforeEach(function () {
     $this->layerResolver = new LayerResolver;
     $this->tempDir = sys_get_temp_dir().'/sir-test-'.uniqid();
     mkdir($this->tempDir, 0755, true);
+    $this->previousHome = getenv('HOME');
+    putenv('HOME='.realpath($this->tempDir).'/home');
 });
 
 afterEach(function () {
+    putenv($this->previousHome === false ? 'HOME' : 'HOME='.$this->previousHome);
     if (isset($this->tempDir) && is_dir($this->tempDir)) {
         removeDir($this->tempDir);
     }
@@ -29,7 +32,7 @@ function removeDir(string $dir): void
         if ($base === '.' || $base === '..') {
             continue;
         }
-        if (is_dir($entry)) {
+        if (is_dir($entry) && ! is_link($entry)) {
             removeDir($entry);
         } else {
             @unlink($entry);
@@ -75,8 +78,8 @@ test('S001-FR-003: layers ordered nearest-first (index 0 = closest to cwd)', fun
     $layers = $this->layerResolver->resolve($childDir);
 
     expect(count($layers))->toBeGreaterThanOrEqual(2);
-    expect($layers[0])->toContain('/project/.sir');
-    expect($layers[1])->toContain('/org/.sir');
+    expect($layers[0])->toBe(realpath($childDir).'/.sir');
+    expect($layers[1])->toBe(realpath($parentDir).'/.sir');
 });
 
 // === S001-FR-010: Root /.sir check ===
@@ -116,7 +119,7 @@ test('S001-FR-007: getGlobalSirPath uses HOME env var', function () {
     $globalPath = $this->layerResolver->getGlobalSirPath();
 
     expect(str_contains($globalPath, '.sir'))->toBeTrue();
-    expect(str_starts_with($globalPath, '/'))->toBeTrue();
+    expect($globalPath)->toBe(getenv('HOME').'/.sir');
 });
 
 test('S001-FR-007: getGlobalSirPath falls back to USERPROFILE', function () {
@@ -151,8 +154,10 @@ test('S001-FR-009: ensureGlobalSirExists creates ~/.sir with 0755', function () 
     $this->layerResolver->ensureGlobalSirExists();
 
     expect(is_dir($globalPath))->toBeTrue();
-    $perms = substr(sprintf('%o', fileperms($globalPath)), -4);
-    expect($perms)->toBe('0755');
+    if (PHP_OS_FAMILY !== 'Windows') {
+        $perms = substr(sprintf('%o', fileperms($globalPath)), -4);
+        expect($perms)->toBe('0755');
+    }
 
     // Cleanup
     removeDir($globalPath);
@@ -167,10 +172,7 @@ test('S001-FR-005: startPath canonicalized via realpath', function () {
 
     $layers = $this->layerResolver->resolve($projectDir);
 
-    foreach ($layers as $layer) {
-        expect(str_starts_with($layer, '/'))->toBeTrue();
-        expect(str_contains($layer, '..'))->toBeFalse();
-    }
+    expect($layers[0])->toBe(realpath($projectDir).'/.sir');
 });
 
 // === S001-FR-011: No duplicate paths ===
@@ -206,7 +208,7 @@ test('S001-FR-008: returns empty array when no .sir directories exist', function
     mkdir($emptyDir, 0755, true);
 
     $backupHome = getenv('HOME');
-    putenv('HOME=/nonexistent/home/'.uniqid());
+    putenv('HOME='.$this->tempDir.'/absent-home');
     $_ENV['HOME'] = getenv('HOME');
 
     $resolver = new LayerResolver;
@@ -293,8 +295,8 @@ test('S001-AS-002: multiple layers with correct precedence', function () {
 
     $layers = $this->layerResolver->resolve($projectDir);
 
-    expect($layers[0])->toContain('/project/.sir');
-    expect($layers[1])->toContain('/org/.sir');
+    expect($layers[0])->toBe(realpath($projectDir).'/.sir');
+    expect($layers[1])->toBe(realpath($orgDir).'/.sir');
     expect(end($layers))->toBe($globalPath);
     $globalCount = array_count_values($layers)[$globalPath] ?? 0;
     expect($globalCount)->toBe(1);
@@ -331,7 +333,7 @@ test('S001-AS-005: no layers found returns empty array', function () {
     mkdir($emptyDir, 0755, true);
 
     $backupHome = getenv('HOME');
-    putenv('HOME=/nonexistent/home/'.uniqid());
+    putenv('HOME='.$this->tempDir.'/absent-home');
     $_ENV['HOME'] = getenv('HOME');
 
     $resolver = new LayerResolver;
@@ -360,17 +362,15 @@ test('S001-EC-002: symlink paths resolved to realpath', function () {
     $linkDir = $this->tempDir.'/link';
     mkdir($realDir, 0755, true);
     mkdir($realDir.'/.sir', 0755, true);
-    symlink($realDir, $linkDir);
+    if (! @symlink($realDir, $linkDir)) {
+        $this->markTestSkipped('Directory symlinks are unavailable');
+    }
 
     $layers = $this->layerResolver->resolve($linkDir);
 
-    foreach ($layers as $layer) {
-        expect(str_starts_with($layer, '/'))->toBeTrue();
-        expect(str_contains($layer, '..'))->toBeFalse();
-        expect(str_contains($layer, 'link'))->toBeFalse();
-    }
+    expect($layers[0])->toBe(realpath($realDir).'/.sir');
 
-    unlink($linkDir);
+    PHP_OS_FAMILY === 'Windows' ? rmdir($linkDir) : unlink($linkDir);
 });
 
 test('S001-EC-005: .sir file (not directory) is silently skipped', function () {
