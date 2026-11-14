@@ -92,3 +92,85 @@ if grep -F 'private-ci-value' timeout.log; then
     echo 'Timeout diagnostics exposed the input value' >&2
     exit 1
 fi
+
+cat > "$HOME/.sir/workflows/preview.yml" <<'YAML'
+inputs:
+  argument: {required: true}
+  secret: {default: private-default}
+  public: {default: preview, publicDefault: true}
+  protected: {default: hidden-value, publicDefault: true, sensitive: true}
+steps:
+  - name: Shell
+    shell: 'touch preview-shell && printf %s {{shellQuote(argument)}}'
+    saveAs: output
+  - name: Task
+    task: files.write
+    with: {path: preview-task, content: hidden}
+    if: '{{output}}'
+  - name: Method
+    method: unknown-method
+    forEach: '{{output}}'
+  - name: Static
+    shell: 'touch preview-static'
+    if: false
+    forEach: [a, b]
+YAML
+printf 'touch preview-script\n' > "$HOME/.sir/workflows/opaque.sh"
+printf 'steps: [\n' > "$HOME/.sir/workflows/broken.yml"
+
+"$sir" workflows:list --json > list.json
+"$sir" workflows:show preview --json > show.json
+"$sir" run preview --json --dry-run --input=argument=private-input > preview.json
+"$sir" run opaque --json --dry-run > opaque.json
+for scenario in missing-workflow broken missing-input remote no-dry-run; do
+    case "$scenario" in
+        missing-workflow) set -- workflows:show missing --json ;;
+        broken) set -- workflows:show broken --json ;;
+        missing-input) set -- run preview --json --dry-run ;;
+        remote) set -- run preview --json --dry-run --remote=ssh://unused ;;
+        no-dry-run) set -- run preview --json --input=argument=private-input ;;
+    esac
+    if "$sir" "$@" > "$scenario.json"; then
+        echo "Expected $scenario to exit nonzero" >&2
+        exit 1
+    fi
+done
+
+php <<'PHP'
+<?php
+function readJson(string $file): array {
+    return json_decode(file_get_contents($file.'.json'), true, flags: JSON_THROW_ON_ERROR);
+}
+function check(bool $condition, string $label): void {
+    if (! $condition) {
+        throw new RuntimeException($label);
+    }
+}
+$list = readJson('list')['workflows'];
+check(in_array('preview', array_column($list, 'name'), true), 'Discovery');
+$show = readJson('show');
+check(str_ends_with($show['workflow']['path'], '/preview.yml'), 'Source path');
+check($show['inputs'][0]['required'], 'Required input');
+check($show['inputs'][1]['defaultRedacted'] && $show['inputs'][3]['defaultRedacted'], 'Default redaction');
+check($show['inputs'][2]['default'] === 'preview', 'Public default');
+$preview = readJson('preview');
+check(array_column($preview['steps'], 'type') === ['shell', 'task', 'method', 'shell'], 'Step order');
+check($preview['steps'][1]['condition'] === 'unresolved', 'Dynamic condition');
+check($preview['steps'][2]['loop'] === 'unresolved', 'Dynamic loop');
+check($preview['steps'][3]['condition'] === 'false' && $preview['steps'][3]['loop'] === 2, 'Static condition and loop');
+check(readJson('opaque')['opaque'], 'Opaque script');
+foreach ([
+    'missing-workflow' => 'workflow_not_found',
+    'broken' => 'invalid_workflow',
+    'missing-input' => 'invalid_inputs',
+    'remote' => 'remote_preview_unsupported',
+    'no-dry-run' => 'dry_run_required',
+] as $file => $error) {
+    check(readJson($file)['error'] === $error, $file);
+}
+PHP
+if grep -E 'private-default|private-input|hidden-value|touch preview-' show.json preview.json; then
+    echo 'JSON exposed values or shell source' >&2
+    exit 1
+fi
+for file in preview-shell preview-task preview-static preview-script; do test ! -e "$file"; done

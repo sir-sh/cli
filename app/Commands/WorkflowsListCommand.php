@@ -3,17 +3,24 @@
 namespace App\Commands;
 
 use App\Services\Workflows\WorkflowLoader;
+use App\Services\Workflows\WorkflowSummary;
 use LaravelZero\Framework\Commands\Command;
 
 class WorkflowsListCommand extends Command
 {
-    protected $signature = 'workflows:list';
+    protected $signature = 'workflows:list {--json : Emit workflow metadata as JSON}';
 
     protected $description = 'List all available workflows';
 
     public function handle(WorkflowLoader $workflowLoader): int
     {
         $workflows = $workflowLoader->discoverWorkflows();
+
+        if ($this->option('json')) {
+            WorkflowSummary::write($this->output, ['workflows' => array_values($workflows)]);
+
+            return self::SUCCESS;
+        }
 
         if (empty($workflows)) {
             $this->warn('No workflows found.');
