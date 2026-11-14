@@ -8,6 +8,8 @@ use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
 use Illuminate\Console\OutputStyle;
+use Symfony\Component\Console\Formatter\OutputFormatter;
+use Symfony\Component\Process\Exception\ProcessTimedOutException;
 use Symfony\Component\Process\Process;
 
 class WorkflowRunner
@@ -115,7 +117,9 @@ class WorkflowRunner
                     continue;
                 }
 
-                throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage(), 0, $e);
+                $name = OutputFormatter::escape($step['name'] ?? $this->getStepType($step));
+
+                throw new \RuntimeException("Step {$stepNum} failed: {$name}. ".$e->getMessage(), 0, $e);
             }
         }
 
@@ -164,8 +168,10 @@ class WorkflowRunner
             $shellResult = $this->executeShell($step, $context);
 
             if (! $shellResult['success']) {
+                $command = $this->formatShellCommand($step['shell']);
+
                 throw new \RuntimeException(
-                    "shell command exited with code {$shellResult['exitCode']}"
+                    "shell command exited with code {$shellResult['exitCode']}\nCommand: {$command}"
                 );
             }
 
@@ -184,16 +190,13 @@ class WorkflowRunner
         // Count how many type keys are present
         $typeKeyCount = count($presentKeys);
 
-        // Find the step number from context if available, else use 1-based index
-        $stepNum = ($step['_stepIndex'] ?? 0) + 1;
-
         if ($typeKeyCount === 0) {
-            throw new \RuntimeException("Step {$stepNum} has no type key");
+            throw new \RuntimeException('Step has no type key');
         }
 
         if ($typeKeyCount > 1) {
             $typeKeyStr = implode(' and ', $presentKeys);
-            throw new \RuntimeException("Step {$stepNum} must have exactly one type key (has {$typeKeyStr})");
+            throw new \RuntimeException("Step must have exactly one type key (has {$typeKeyStr})");
         }
     }
 
@@ -259,15 +262,21 @@ class WorkflowRunner
         $output = '';
         $errorOutput = '';
 
-        $process->run(function ($type, $buffer) use (&$output, &$errorOutput) {
-            if ($type === Process::ERR) {
-                $errorOutput .= $buffer;
-                fwrite(STDERR, $buffer);
-            } else {
-                $output .= $buffer;
-                echo $buffer;
-            }
-        });
+        try {
+            $process->run(function ($type, $buffer) use (&$output, &$errorOutput) {
+                if ($type === Process::ERR) {
+                    $errorOutput .= $buffer;
+                    fwrite(STDERR, $buffer);
+                } else {
+                    $output .= $buffer;
+                    echo $buffer;
+                }
+            });
+        } catch (ProcessTimedOutException) {
+            $command = $this->formatShellCommand($command);
+
+            throw new \RuntimeException("shell command timed out after {$step['timeout']} seconds\nCommand: {$command}");
+        }
 
         $exitCode = $process->getExitCode();
 
@@ -277,6 +286,13 @@ class WorkflowRunner
             'errorOutput' => $errorOutput,
             'success' => $process->isSuccessful(),
         ];
+    }
+
+    private function formatShellCommand(string $command): string
+    {
+        $template = preg_replace('/\{\{[^}]+\}\}/', '[redacted]', $command);
+
+        return OutputFormatter::escape(trim($template));
     }
 
     /**
@@ -315,7 +331,7 @@ class WorkflowRunner
         }
 
         $type = $this->getStepType($step);
-        $name = $step['name'] ?? $this->getStepName($step);
+        $name = OutputFormatter::escape($step['name'] ?? ($type === 'shell' ? 'shell command' : $this->getStepName($step)));
 
         $this->output->writeln('');
         $this->output->writeln("<info>═══ Step {$stepNum}: {$name} [{$type}] ═══</info>");

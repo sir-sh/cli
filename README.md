@@ -47,26 +47,9 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### Run a local workflow
 
-```sh
-mkdir -p "$HOME/.sir/workflows"
-cp examples/workflows/hello.yml "$HOME/.sir/workflows/"
-sir workflows:list
-sir run hello --dry-run --non-interactive --input='name=Sir'
-sir run hello --non-interactive --input='name=Sir'
-cat greeting.txt
-```
-
-The dry run previews the step. The actual run writes `Hello, Sir!` to
-`greeting.txt` in the current directory.
-
-Pass `--input=name=value` once per named input, or pass positional values in
-declaration order. Named inputs take precedence and positional values fill the
-remaining inputs. A missing required input in non-interactive mode causes a
-nonzero exit. By default, a failing step stops the local run before subsequent
-steps. A step can opt into continuing with `continueOnError: true`.
-
-To check discovery, dry run, execution, and failure handling in an isolated
-profile, run `sh tests/smoke-local.sh "$(command -v sir)"` from the checkout.
+The [quickstart](https://www.sir.sh/docs/QUICKSTART) shows how to install and
+run a pinned workflow from the [Sir workflow registry](https://github.com/sir-sh/workflows).
+Pass `--input=name=value` for named inputs and `--dry-run` to preview the steps.
 
 ## Core Commands
 
@@ -286,7 +269,7 @@ cp -r sir-git ~/.sir/packs/
 
 ## Example: Review Workflow
 
-The included review workflow demonstrates a complete workflow:
+Install the [review workflow from the registry](https://github.com/sir-sh/workflows/tree/main/workflows/review) before running the example.
 
 ```bash
 sir run review myproject --input=target=feature/new-feature --input=base=main
