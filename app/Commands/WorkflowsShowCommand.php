@@ -3,17 +3,30 @@
 namespace App\Commands;
 
 use App\Services\Workflows\WorkflowLoader;
+use App\Services\Workflows\WorkflowSummary;
 use LaravelZero\Framework\Commands\Command;
 
 class WorkflowsShowCommand extends Command
 {
-    protected $signature = 'workflows:show {workflow}';
+    protected $signature = 'workflows:show {workflow} {--json : Emit workflow metadata as JSON}';
 
     protected $description = 'Show workflow details';
 
     public function handle(WorkflowLoader $workflowLoader): int
     {
         $workflowName = $this->argument('workflow');
+        if ($this->option('json')) {
+            try {
+                $workflow = $workflowLoader->load($workflowName);
+                $data = $workflow ? WorkflowSummary::describe($workflow) : ['error' => 'workflow_not_found'];
+            } catch (\Exception|\TypeError) {
+                $data = ['error' => 'invalid_workflow'];
+            }
+            WorkflowSummary::write($this->output, $data);
+
+            return isset($data['error']) ? self::FAILURE : self::SUCCESS;
+        }
+
         $workflow = $workflowLoader->load($workflowName);
 
         if (! $workflow) {

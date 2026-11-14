@@ -11,6 +11,7 @@ use App\Services\Remote\RemoteExecutorFactory;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
+use App\Services\Workflows\WorkflowSummary;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Yaml\Yaml;
 
@@ -19,6 +20,7 @@ class RunWorkflowCommand extends Command
     protected $signature = 'run {workflow} {values?* : Workflow input values in declaration order}
                             {--input=* : Named workflow input as name=value}
                             {--dry-run : Show what would be executed}
+                            {--json : Emit a local dry run as JSON}
                             {--yes : Skip confirmations}
                             {--non-interactive : Run without prompts}
                             {--remote= : Remote target URI (e.g., ssh://user@host, docker://image)}
@@ -41,6 +43,17 @@ class RunWorkflowCommand extends Command
         $remoteUri = $this->option('remote');
         $remoteConfigPath = $this->option('remote-config');
         $follow = $this->option('follow');
+
+        if ($this->option('json')) {
+            $data = match (true) {
+                ! $dryRun => ['error' => 'dry_run_required'],
+                $remoteUri !== null || $remoteConfigPath !== null || $follow => ['error' => 'remote_preview_unsupported'],
+                default => $this->preview($workflowLoader, $workflowName),
+            };
+            WorkflowSummary::write($this->output, $data);
+
+            return isset($data['error']) ? self::FAILURE : self::SUCCESS;
+        }
 
         // Handle remote execution if specified
         if ($remoteUri || $remoteConfigPath) {
@@ -106,7 +119,28 @@ class RunWorkflowCommand extends Command
         }
     }
 
-    private function gatherInputs(array $workflow): array
+    private function preview(WorkflowLoader $loader, string $name): array
+    {
+        try {
+            $workflow = $loader->load($name);
+            if (! $workflow) {
+                return ['error' => 'workflow_not_found'];
+            }
+            $summary = WorkflowSummary::describe($workflow, preview: true);
+        } catch (\Exception|\TypeError) {
+            return ['error' => 'invalid_workflow'];
+        }
+
+        try {
+            $this->gatherInputs($workflow, prompt: false);
+        } catch (\InvalidArgumentException) {
+            return ['error' => 'invalid_inputs'];
+        }
+
+        return $summary;
+    }
+
+    private function gatherInputs(array $workflow, bool $prompt = true): array
     {
         $inputDefs = $workflow['inputs'] ?? [];
         $inputs = [];
@@ -134,7 +168,7 @@ class RunWorkflowCommand extends Command
                 $inputs[$name] = array_shift($positional);
             } elseif ($name !== 'input' && $this->hasOption($name) && $this->option($name)) {
                 $inputs[$name] = $this->option($name);
-            } elseif ($required && $this->input->isInteractive() && ! $this->option('non-interactive')) {
+            } elseif ($required && $prompt && $this->input->isInteractive() && ! $this->option('non-interactive')) {
                 $inputs[$name] = $this->ask($description, $default);
             } elseif ($default !== null) {
                 $inputs[$name] = $default;
