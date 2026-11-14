@@ -9,7 +9,7 @@ A powerful CLI tool for developers who love automation. **sir.sh** (CLI command:
 - **Workflow Engine**: Define workflows in YAML with support for variables, templating, and step dependencies
 - **Built-in Tasks**: Common operations like git clone, file operations, test running, and more
 - **Method System**: Extensible method definitions from packs (shell or exec-based)
-- **AI Agent Interface**: MCP-style tool surface for AI assistants to discover and execute workflows safely
+- **MCP Server**: Local stdio tools to list, inspect, and preview workflows
 - **Clean Output**: Step headers, progress indicators, timing, and success/fail markers
 
 ## Known Limitations (v1)
@@ -50,6 +50,11 @@ export PATH="$HOME/.local/bin:$PATH"
 The [quickstart](https://www.sir.sh/docs/QUICKSTART) shows how to install and
 run a pinned workflow from the [Sir workflow registry](https://github.com/sir-sh/workflows).
 Pass `--input=name=value` for named inputs and `--dry-run` to preview the steps.
+
+Start the read-only MCP server with
+`sir mcp:serve --project-dir=/absolute/path/to/project`. See the
+[MCP client setup guide](https://www.sir.sh/docs/QUICKSTART)
+for tool names and verification commands.
 
 ## Core Commands
 

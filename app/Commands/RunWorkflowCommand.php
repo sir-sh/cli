@@ -9,6 +9,8 @@ use App\Services\Methods\MethodRegistry;
 use App\Services\Remote\RemoteExecutionException;
 use App\Services\Remote\RemoteExecutorFactory;
 use App\Services\Tasks\TaskRegistry;
+use App\Services\Workflows\WorkflowInputs;
+use App\Services\Workflows\WorkflowInspection;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
 use App\Services\Workflows\WorkflowSummary;
@@ -48,7 +50,7 @@ class RunWorkflowCommand extends Command
             $data = match (true) {
                 ! $dryRun => ['error' => 'dry_run_required'],
                 $remoteUri !== null || $remoteConfigPath !== null || $follow => ['error' => 'remote_preview_unsupported'],
-                default => $this->preview($workflowLoader, $workflowName),
+                default => (new WorkflowInspection($workflowLoader))->describe($workflowName, fn (array $workflow) => WorkflowInputs::resolve($workflow, $this->argument('values'), $this->option('input'))),
             };
             WorkflowSummary::write($this->output, $data);
 
@@ -119,71 +121,19 @@ class RunWorkflowCommand extends Command
         }
     }
 
-    private function preview(WorkflowLoader $loader, string $name): array
+    private function gatherInputs(array $workflow): array
     {
-        try {
-            $workflow = $loader->load($name);
-            if (! $workflow) {
-                return ['error' => 'workflow_not_found'];
-            }
-            $summary = WorkflowSummary::describe($workflow, preview: true);
-        } catch (\Exception|\TypeError) {
-            return ['error' => 'invalid_workflow'];
-        }
-
-        try {
-            $this->gatherInputs($workflow, prompt: false);
-        } catch (\InvalidArgumentException) {
-            return ['error' => 'invalid_inputs'];
-        }
-
-        return $summary;
-    }
-
-    private function gatherInputs(array $workflow, bool $prompt = true): array
-    {
-        $inputDefs = $workflow['inputs'] ?? [];
-        $inputs = [];
-
-        $positional = $this->argument('values');
-        $named = [];
-
-        foreach ($this->option('input') as $assignment) {
-            [$name, $value] = array_pad(explode('=', $assignment, 2), 2, null);
-            if ($value === null || ! array_key_exists($name, $inputDefs) || array_key_exists($name, $named)) {
-                throw new \InvalidArgumentException("Invalid or duplicate workflow input: {$name}");
+        return WorkflowInputs::resolve($workflow, $this->argument('values'), $this->option('input'), function ($name, $def) {
+            if ($name !== 'input' && $this->hasOption($name) && $this->option($name)) {
+                return $this->option($name);
             }
 
-            $named[$name] = $value;
-        }
-
-        foreach ($inputDefs as $name => $def) {
-            $required = $def['required'] ?? false;
-            $default = $def['default'] ?? null;
-            $description = $def['description'] ?? $name;
-
-            if (array_key_exists($name, $named)) {
-                $inputs[$name] = $named[$name];
-            } elseif ($positional !== []) {
-                $inputs[$name] = array_shift($positional);
-            } elseif ($name !== 'input' && $this->hasOption($name) && $this->option($name)) {
-                $inputs[$name] = $this->option($name);
-            } elseif ($required && $prompt && $this->input->isInteractive() && ! $this->option('non-interactive')) {
-                $inputs[$name] = $this->ask($description, $default);
-            } elseif ($default !== null) {
-                $inputs[$name] = $default;
+            if (($def['required'] ?? false) && $this->input->isInteractive() && ! $this->option('non-interactive')) {
+                return $this->ask($def['description'] ?? $name, $def['default'] ?? null);
             }
 
-            if ($required && ! isset($inputs[$name])) {
-                throw new \InvalidArgumentException("Missing required workflow input: {$name}");
-            }
-        }
-
-        if ($positional !== []) {
-            throw new \InvalidArgumentException('Too many positional workflow inputs');
-        }
-
-        return $inputs;
+            return $def['default'] ?? null;
+        });
     }
 
     private function handleRemoteExecution(

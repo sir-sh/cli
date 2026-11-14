@@ -2,6 +2,7 @@
 
 namespace App\Commands;
 
+use App\Services\Workflows\WorkflowInspection;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowSummary;
 use LaravelZero\Framework\Commands\Command;
@@ -14,13 +15,13 @@ class WorkflowsListCommand extends Command
 
     public function handle(WorkflowLoader $workflowLoader): int
     {
-        $workflows = $workflowLoader->discoverWorkflows();
-
         if ($this->option('json')) {
-            WorkflowSummary::write($this->output, ['workflows' => array_values($workflows)]);
+            WorkflowSummary::write($this->output, (new WorkflowInspection($workflowLoader))->listing());
 
             return self::SUCCESS;
         }
+
+        $workflows = $workflowLoader->discoverWorkflows();
 
         if (empty($workflows)) {
             $this->warn('No workflows found.');

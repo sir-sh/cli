@@ -2,6 +2,7 @@
 
 namespace App\Commands;
 
+use App\Services\Workflows\WorkflowInspection;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowSummary;
 use LaravelZero\Framework\Commands\Command;
@@ -16,12 +17,7 @@ class WorkflowsShowCommand extends Command
     {
         $workflowName = $this->argument('workflow');
         if ($this->option('json')) {
-            try {
-                $workflow = $workflowLoader->load($workflowName);
-                $data = $workflow ? WorkflowSummary::describe($workflow) : ['error' => 'workflow_not_found'];
-            } catch (\Exception|\TypeError) {
-                $data = ['error' => 'invalid_workflow'];
-            }
+            $data = (new WorkflowInspection($workflowLoader))->describe($workflowName);
             WorkflowSummary::write($this->output, $data);
 
             return isset($data['error']) ? self::FAILURE : self::SUCCESS;
