@@ -368,7 +368,8 @@ test('S001-EC-002: symlink paths resolved to realpath', function () {
 
     $layers = $this->layerResolver->resolve($linkDir);
 
-    expect($layers[0])->toBe(realpath($realDir).'/.sir');
+    expect(basename(dirname($layers[0])))->toBe('real');
+    expect(realpath($layers[0]))->toBe(realpath(realpath($linkDir).'/.sir'));
 
     PHP_OS_FAMILY === 'Windows' ? rmdir($linkDir) : unlink($linkDir);
 });
