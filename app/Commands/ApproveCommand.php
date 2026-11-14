@@ -64,7 +64,7 @@ class ApproveCommand extends Command
                 return self::FAILURE;
             }
 
-            if (in_array(false, array_column($result['steps'], 'success'), true)) {
+            if (array_filter($result['steps'], fn (array $step) => $step['success'] === false || $this->failedOutput($step['output']))) {
                 $this->error('Workflow completed with failed steps.');
 
                 return self::FAILURE;
@@ -80,6 +80,24 @@ class ApproveCommand extends Command
         } finally {
             chdir($originalDirectory);
         }
+    }
+
+    private function failedOutput(mixed $output): bool
+    {
+        if (! is_array($output)) {
+            return false;
+        }
+        if (($output['success'] ?? null) === false || ($output['failureCount'] ?? 0) > 0) {
+            return true;
+        }
+
+        foreach ($output['loopResults'] ?? [] as $iteration) {
+            if ($this->failedOutput($iteration['result'])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function resolveReviewedPlan(RunPlan $plans, array $request): array

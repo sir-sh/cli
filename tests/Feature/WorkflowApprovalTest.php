@@ -177,3 +177,16 @@ test('changing a resolved method while reviewing prevents execution', function (
         ->and($this->project.'/original.txt')->not->toBeFile()
         ->and($this->project.'/changed.txt')->not->toBeFile();
 });
+
+test('a failed method gives the approved command a nonzero exit status', function () {
+    file_put_contents($this->workflow, "steps:\n  - method: fail\n");
+    $directory = $this->project.'/.sir/methods';
+    mkdir($directory);
+    file_put_contents($directory.'/fail.json', '{"impl":{"command":"exit 4"}}');
+
+    $process = terminalApproval($this, requestApproval($this, [])['requestId']);
+    $process->setInput("approve\n");
+
+    expect($process->run())->toBe(1)
+        ->and($process->getOutput())->toContain('Workflow completed with failed steps');
+});
