@@ -20,7 +20,7 @@ class WorkflowSummary
     {
         $definitions = $workflow['inputs'] ?? [];
         $stepDefinitions = $workflow['steps'] ?? [];
-        if (! is_array($definitions) || ! is_array($stepDefinitions)) {
+        if (! is_array($definitions) || ! is_array($stepDefinitions) || ! array_is_list($stepDefinitions)) {
             throw new \InvalidArgumentException('Invalid workflow inputs or steps');
         }
 
@@ -63,9 +63,14 @@ class WorkflowSummary
                 'type' => $type,
             ];
 
+            $condition = $step['if'] ?? null;
+            $loop = $step['forEach'] ?? null;
+            if (($condition !== null && ! is_bool($condition) && ! is_string($condition))
+                || ($loop !== null && ! is_array($loop) && ! is_string($loop))) {
+                throw new \InvalidArgumentException('Invalid condition or loop');
+            }
+
             if ($preview) {
-                $condition = $step['if'] ?? null;
-                $loop = $step['forEach'] ?? null;
                 $dynamicCondition = is_string($condition) && str_contains($condition, '{{');
                 $dynamicLoop = is_string($loop) && str_contains($loop, '{{');
                 $entry['condition'] = match (true) {

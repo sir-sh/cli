@@ -117,15 +117,18 @@ steps:
 YAML
 printf 'touch preview-script\n' > "$HOME/.sir/workflows/opaque.sh"
 printf 'steps: [\n' > "$HOME/.sir/workflows/broken.yml"
+printf 'steps: [{shell: echo, task: x}]\n' > "$HOME/.sir/workflows/duplicate.yml"
+printf 'steps: {first: {shell: echo}}\n' > "$HOME/.sir/workflows/mapping.yml"
 
 "$sir" workflows:list --json > list.json
 "$sir" workflows:show preview --json > show.json
 "$sir" run preview --json --dry-run --input=argument=private-input > preview.json
 "$sir" run opaque --json --dry-run > opaque.json
-for scenario in missing-workflow broken missing-input remote no-dry-run; do
+for scenario in missing-workflow broken duplicate mapping missing-input remote no-dry-run; do
     case "$scenario" in
         missing-workflow) set -- workflows:show missing --json ;;
-        broken) set -- workflows:show broken --json ;;
+        broken|duplicate) set -- workflows:show "$scenario" --json ;;
+        mapping) set -- run mapping --dry-run --json ;;
         missing-input) set -- run preview --json --dry-run ;;
         remote) set -- run preview --json --dry-run --remote=ssh://unused ;;
         no-dry-run) set -- run preview --json --input=argument=private-input ;;
@@ -162,6 +165,8 @@ check(readJson('opaque')['opaque'], 'Opaque script');
 foreach ([
     'missing-workflow' => 'workflow_not_found',
     'broken' => 'invalid_workflow',
+    'duplicate' => 'invalid_workflow',
+    'mapping' => 'invalid_workflow',
     'missing-input' => 'invalid_inputs',
     'remote' => 'remote_preview_unsupported',
     'no-dry-run' => 'dry_run_required',
