@@ -38,6 +38,7 @@ class RecipesUpdateCommand extends Command
 
         if (! file_exists($lockFilePath)) {
             $this->error('No packs installed.');
+
             return self::FAILURE;
         }
 
@@ -65,6 +66,7 @@ class RecipesUpdateCommand extends Command
     {
         if (empty($results)) {
             $this->warn('No packs to update.');
+
             return;
         }
 
@@ -90,14 +92,14 @@ class RecipesUpdateCommand extends Command
         $this->table(['Pack', 'Ref', 'Status', 'Message'], $tableRows);
 
         // Summary
-        $updated = count(array_filter($results, fn($r) => $r['success']));
-        $failed = count(array_filter($results, fn($r) => ! $r['success']));
+        $updated = count(array_filter($results, fn ($r) => $r['success']));
+        $failed = count(array_filter($results, fn ($r) => ! $r['success']));
 
         $this->line('');
         if ($dryRun) {
-            $this->info("Would update {$updated} pack(s)" . ($failed ? ", {$failed} failed(s)" : ''));
+            $this->info("Would update {$updated} pack(s)".($failed ? ", {$failed} failed(s)" : ''));
         } else {
-            $this->info("Updated {$updated} pack(s)" . ($failed ? ", {$failed} failed(s)" : ''));
+            $this->info("Updated {$updated} pack(s)".($failed ? ", {$failed} failed(s)" : ''));
         }
     }
 

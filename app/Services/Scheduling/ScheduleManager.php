@@ -17,7 +17,7 @@ class ScheduleManager
         $schedules = [];
 
         foreach ($layers as $layer) {
-            $file = $layer . '/schedules.yml';
+            $file = $layer.'/schedules.yml';
             if (file_exists($file)) {
                 $layerSchedules = Yaml::parseFile($file);
                 $schedules = array_merge($schedules, $layerSchedules['schedules'] ?? []);
@@ -34,22 +34,24 @@ class ScheduleManager
         }
 
         $cronExpr = $schedule['cron'] ?? null;
-        if (!$cronExpr) {
+        if (! $cronExpr) {
             return false;
         }
 
         $cron = new \CronExpression($cronExpr);
+
         return $cron->isDue();
     }
 
     public function getNextRun(array $schedule): ?\DateTimeInterface
     {
         $cronExpr = $schedule['cron'] ?? null;
-        if (!$cronExpr) {
+        if (! $cronExpr) {
             return null;
         }
 
         $cron = new \CronExpression($cronExpr);
+
         return $cron->getNextRunDate();
     }
 }

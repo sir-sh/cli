@@ -3,14 +3,13 @@
 namespace Tests\Unit\Tasks;
 
 use App\Services\Context;
-use App\Services\Tasks\TaskRegistry;
-use App\Services\Tasks\BuiltIn\WorkspaceTempTask;
-use App\Services\Tasks\BuiltIn\TestsAutoTask;
 use App\Services\Tasks\BuiltIn\CodeRabbitReviewTask;
-use App\Services\Tasks\Files\FilesWriteTask;
+use App\Services\Tasks\BuiltIn\TestsAutoTask;
+use App\Services\Tasks\BuiltIn\WorkspaceTempTask;
 use App\Services\Tasks\Files\FilesWriteMdTask;
+use App\Services\Tasks\Files\FilesWriteTask;
 use App\Services\Tasks\Git\GitCloneTask;
-use PHPUnit\Framework\TestCase;
+use App\Services\Tasks\TaskRegistry;
 
 beforeEach(function () {
     $this->registry = new TaskRegistry;
@@ -197,7 +196,7 @@ test('S007-FR-006: files.write writes content to path', function () {
 test('S007-FR-006.a: files.write throws InvalidArgumentException when path missing', function () {
     $task = new FilesWriteTask;
 
-    expect(fn() => $task->execute(['content' => 'test'], new Context))
+    expect(fn () => $task->execute(['content' => 'test'], new Context))
         ->toThrow(\InvalidArgumentException::class);
 });
 
@@ -245,7 +244,7 @@ test('S007-FR-008: files.writeMd writes markdown content', function () {
 test('S007-FR-008.a: files.writeMd throws when path missing', function () {
     $task = new FilesWriteMdTask;
 
-    expect(fn() => $task->execute(['content' => 'test'], new Context))
+    expect(fn () => $task->execute(['content' => 'test'], new Context))
         ->toThrow(\InvalidArgumentException::class);
 });
 
@@ -302,7 +301,7 @@ test('S007-IF-005.a: bytes reflects combined string length with title', function
 test('S007-FR-010: git.clone requires repo argument', function () {
     $task = new GitCloneTask;
 
-    expect(fn() => $task->execute(['folder' => '/tmp/folder'], new Context))
+    expect(fn () => $task->execute(['folder' => '/tmp/folder'], new Context))
         ->toThrow(\InvalidArgumentException::class, 'repo is required');
 });
 
@@ -336,7 +335,7 @@ test('S007-FR-011: git.clone accepts branch argument', function () {
 test('S007-FR-016: tests.auto throws RuntimeException when no test script found', function () {
     $task = new TestsAutoTask;
 
-    expect(fn() => $task->execute(['cwd' => $this->tempDir], new Context))
+    expect(fn () => $task->execute(['cwd' => $this->tempDir], new Context))
         ->toThrow(\RuntimeException::class, 'No test command found');
 });
 
@@ -399,7 +398,7 @@ test('S007-IF-007: tests.auto output has all required keys', function () {
 test('S007-FR-017: coderabbit.review throws when target missing', function () {
     $task = new CodeRabbitReviewTask;
 
-    expect(fn() => $task->execute(['base' => 'main'], new Context))
+    expect(fn () => $task->execute(['base' => 'main'], new Context))
         ->toThrow(\InvalidArgumentException::class, 'target branch is required');
 });
 
@@ -442,7 +441,7 @@ test('S007-FR-018: coderabbit falls back to gh-cli when coderabbit not available
         expect($result)->toHaveKey('markdown');
     } else {
         // Neither available
-        expect(fn() => $task->execute(['target' => 'feature-branch'], new Context))
+        expect(fn () => $task->execute(['target' => 'feature-branch'], new Context))
             ->toThrow(\RuntimeException::class);
     }
 });

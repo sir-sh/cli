@@ -13,6 +13,7 @@ interface RemoteExecutor
      * @param  array  $workflow  The workflow definition
      * @param  array  $inputs  Input values for the workflow
      * @return array Execution result with success status and output
+     *
      * @throws RemoteExecutionException on failure
      */
     public function execute(array $workflow, array $inputs): array;

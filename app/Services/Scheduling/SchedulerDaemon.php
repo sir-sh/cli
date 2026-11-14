@@ -2,9 +2,9 @@
 
 namespace App\Services\Scheduling;
 
+use App\Services\Context;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
-use App\Services\Context;
 use Psr\Log\LoggerInterface;
 
 class SchedulerDaemon
@@ -49,7 +49,7 @@ class SchedulerDaemon
 
     private function processSchedule(array $schedule): void
     {
-        if (!$this->manager->shouldRun($schedule)) {
+        if (! $this->manager->shouldRun($schedule)) {
             return;
         }
 
@@ -72,6 +72,7 @@ class SchedulerDaemon
 
         if ($concurrency === 'prevent' && $this->history->isRunning($name)) {
             $this->log("Skipping {$name} - previous execution still active");
+
             return true;
         }
 
@@ -83,8 +84,9 @@ class SchedulerDaemon
         $name = $schedule['name'] ?? 'unknown';
         $workflowName = $schedule['workflow'] ?? null;
 
-        if (!$workflowName) {
+        if (! $workflowName) {
             $this->log("No workflow specified for schedule: {$name}");
+
             return;
         }
 
@@ -109,7 +111,7 @@ class SchedulerDaemon
             $duration = microtime(true) - $startTime;
             $this->history->markComplete($name, 'failure', 1, $duration);
 
-            $this->log("Failed: {$name}: " . $e->getMessage());
+            $this->log("Failed: {$name}: ".$e->getMessage());
         }
     }
 

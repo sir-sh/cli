@@ -6,7 +6,6 @@ use App\Services\Context;
 use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
-use PHPUnit\Framework\TestCase;
 
 beforeEach(function () {
     $this->layerResolver = new LayerResolver;
@@ -199,7 +198,7 @@ test('S006-FR-007: throws InvalidArgumentException for missing required argument
         'impl' => ['type' => 'shell', 'command' => 'echo hi'],
     ];
 
-    expect(fn() => $this->executor->execute($definition, [], new Context))
+    expect(fn () => $this->executor->execute($definition, [], new Context))
         ->toThrow(\InvalidArgumentException::class, 'Required argument missing: name');
 });
 
@@ -507,7 +506,7 @@ test('S006-FR-016: throws InvalidArgumentException for unknown impl type', funct
         'impl' => ['type' => 'unknown-type', 'command' => 'echo test'],
     ];
 
-    expect(fn() => $this->executor->execute($definition, [], new Context, false))
+    expect(fn () => $this->executor->execute($definition, [], new Context, false))
         ->toThrow(\InvalidArgumentException::class, 'Unknown implementation type: unknown-type');
 });
 

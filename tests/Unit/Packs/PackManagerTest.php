@@ -3,7 +3,6 @@
 namespace Tests\Unit\Packs;
 
 use App\Services\Packs\PackManager;
-use PHPUnit\Framework\TestCase;
 
 beforeEach(function () {
     $this->globalPacksDir = sys_get_temp_dir().'/sir-packs-test-global-'.uniqid();
@@ -137,7 +136,7 @@ test('S005-FR-004: invalid source format throws InvalidArgumentException', funct
     $method = $reflection->getMethod('parseSource');
     $method->setAccessible(true);
 
-    expect(fn() => $method->invoke($this->packManager, 'invalid-format'))
+    expect(fn () => $method->invoke($this->packManager, 'invalid-format'))
         ->toThrow(\InvalidArgumentException::class, 'Invalid pack source');
 });
 
@@ -339,7 +338,7 @@ test('S005-EC-001: missing sir-pack.json throws RuntimeException', function () {
     $method = $reflection->getMethod('readPackMetadata');
     $method->setAccessible(true);
 
-    expect(fn() => $method->invoke($this->packManager, $packDir))
+    expect(fn () => $method->invoke($this->packManager, $packDir))
         ->toThrow(\RuntimeException::class, 'Pack metadata file not found');
 });
 
@@ -352,7 +351,7 @@ test('S005-EC-002: malformed sir-pack.json throws RuntimeException', function ()
     $method = $reflection->getMethod('readPackMetadata');
     $method->setAccessible(true);
 
-    expect(fn() => $method->invoke($this->packManager, $packDir))
+    expect(fn () => $method->invoke($this->packManager, $packDir))
         ->toThrow(\RuntimeException::class, 'Invalid pack metadata format');
 });
 
@@ -451,7 +450,7 @@ test('S005-IF-006: PackManager install accepts source and isProject params', fun
     $reflection = new \ReflectionClass($this->packManager);
     $method = $reflection->getMethod('install');
 
-    $params = array_map(fn($p) => $p->getName(), $method->getParameters());
+    $params = array_map(fn ($p) => $p->getName(), $method->getParameters());
 
     expect($params)->toContain('source')
         ->and($params)->toContain('isProject');

@@ -3,14 +3,13 @@
 namespace Tests\Unit;
 
 use App\Services\Context;
+use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
-use App\Services\LayerResolver;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\LoopExecutor;
-use App\Services\Workflows\WorkflowRunner;
 use App\Services\Workflows\WorkflowLoader;
-use Tests\TempDir;
+use App\Services\Workflows\WorkflowRunner;
 
 beforeEach(function () {
     $this->context = new Context;
@@ -308,7 +307,7 @@ describe('S011: Loop Constructs', function () {
 
             expect($result['success'])->toBe(true);
             $output = $context->get('output');
-            $skippedResults = array_filter($output['loopResults'], fn($r) => $r['skipped'] ?? false);
+            $skippedResults = array_filter($output['loopResults'], fn ($r) => $r['skipped'] ?? false);
             expect(count($skippedResults))->toBe(1);
         });
 
@@ -460,7 +459,8 @@ describe('S011: Loop Constructs', function () {
             $callCount = 0;
             $executeStep = function ($ctx) use (&$callCount) {
                 $callCount++;
-                return 'result-' . $callCount;
+
+                return 'result-'.$callCount;
             };
 
             $result = $executor->executeLoop($step, ['a', 'b'], $context, $executeStep);

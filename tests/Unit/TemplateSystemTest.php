@@ -5,11 +5,9 @@ namespace Tests\Unit;
 use App\Services\Context;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
-use App\Services\LayerResolver;
-use App\Services\Workflows\WorkflowRunner;
-use App\Services\Workflows\WorkflowLoader;
 use App\Services\Tasks\TaskRegistry;
-use PHPUnit\Framework\TestCase;
+use App\Services\Workflows\WorkflowLoader;
+use App\Services\Workflows\WorkflowRunner;
 
 beforeEach(function () {
     $this->context = new Context;
@@ -272,9 +270,9 @@ test('S004-EC-003: default with defined empty string (v1 behavior)', function ()
 
 test('S004-EC-004: shellQuote with special shell characters', function () {
     $specialChars = [
-        "my file.txt" => "'my file.txt'",
-        "a;b" => "'a;b'",
-        "a b c" => "'a b c'",
+        'my file.txt' => "'my file.txt'",
+        'a;b' => "'a;b'",
+        'a b c' => "'a b c'",
     ];
 
     foreach ($specialChars as $value => $expected) {

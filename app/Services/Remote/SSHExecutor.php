@@ -3,7 +3,6 @@
 namespace App\Services\Remote;
 
 use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * SSH-based remote execution executor.
@@ -13,9 +12,13 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 class SSHExecutor implements RemoteExecutor
 {
     private string $host;
+
     private int $port;
+
     private string $user;
+
     private string $keyPath;
+
     private ?string $knownHostsPath;
 
     public function __construct(
@@ -85,7 +88,7 @@ class SSHExecutor implements RemoteExecutor
             '-i', $this->keyPath,
             '-p', (string) $this->port,
             "{$this->user}@{$this->host}",
-            'echo ok'
+            'echo ok',
         ]);
         $testProcess->setTimeout(10);
         $testProcess->run();
@@ -130,7 +133,7 @@ class SSHExecutor implements RemoteExecutor
             '-i', $this->keyPath,
             '-p', (string) $this->port,
             "{$this->user}@{$this->host}",
-            $command
+            $command,
         ];
 
         $process = new Process($args);
@@ -156,7 +159,7 @@ class SSHExecutor implements RemoteExecutor
             '-i', $this->keyPath,
             '-P', (string) $this->port,
             $localFile,
-            $remoteDest
+            $remoteDest,
         ]);
         $process->setTimeout(60);
         $process->run();
@@ -178,7 +181,7 @@ class SSHExecutor implements RemoteExecutor
             '-i', $this->keyPath,
             '-P', (string) $this->port,
             $remoteSource,
-            $localDest
+            $localDest,
         ]);
         $process->setTimeout(60);
         $process->run();

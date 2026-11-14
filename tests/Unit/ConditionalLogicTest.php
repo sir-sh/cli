@@ -7,7 +7,6 @@ use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowRunner;
-use Illuminate\Console\OutputStyle;
 
 beforeEach(function () {
     $this->context = new Context;
@@ -245,7 +244,7 @@ YAML;
     $workflow = $this->workflowLoader->load('halt-on-fail');
     $context = $this->context;
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'Step 1 failed:');
 });
 
@@ -263,7 +262,7 @@ YAML;
     $workflow = $this->workflowLoader->load('timeout-step');
     $context = $this->context;
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'exceeded the timeout');
 });
 
@@ -737,7 +736,7 @@ YAML;
     $workflow = $this->workflowLoader->load('as-005');
     $context = $this->context;
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'exceeded the timeout');
 });
 

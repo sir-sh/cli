@@ -35,7 +35,7 @@ class RemoteListCommand extends Command
             $this->info('Configured remotes:');
             $this->newLine();
 
-            $factory = new RemoteExecutorFactory();
+            $factory = new RemoteExecutorFactory;
 
             $rows = [];
             foreach ($config['remotes'] as $name => $remoteConfig) {

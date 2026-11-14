@@ -2,8 +2,8 @@
 
 namespace Tests\Unit;
 
-use App\Services\LayerResolver;
 use App\Commands\WhereCommand;
+use App\Services\LayerResolver;
 
 beforeEach(function () {
     $this->layerResolver = new LayerResolver;

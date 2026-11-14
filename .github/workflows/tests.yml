@@ -11,6 +11,7 @@ jobs:
     timeout-minutes: 5
 
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         php: ['8.2', '8.3', '8.4']
@@ -34,6 +35,11 @@ jobs:
         extensions: fileinfo
         coverage: pcov
 
+    - name: Setup Node for task integration tests
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
     - name: Setup Problem Matches
       run: |
         echo "::add-matcher::${{ runner.tool_cache }}/php.json"
@@ -47,3 +53,10 @@ jobs:
 
     - name: Unit Testing
       run: vendor/bin/pest
+
+    - name: Local workflow smoke test
+      if: runner.os != 'Windows'
+      run: |
+        mkdir -p "$RUNNER_TEMP/sir-bin"
+        ln -s "$PWD/application" "$RUNNER_TEMP/sir-bin/sir"
+        sh tests/smoke-local.sh "$RUNNER_TEMP/sir-bin/sir"

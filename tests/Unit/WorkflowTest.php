@@ -8,7 +8,6 @@ use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
-use PHPUnit\Framework\TestCase;
 
 beforeEach(function () {
     $this->layerResolver = new \App\Services\LayerResolver;
@@ -223,7 +222,7 @@ YAML;
     chdir($this->tempDir);
     $workflow = $this->workflowLoader->load('no-type');
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'has no type key');
 });
 
@@ -238,7 +237,7 @@ YAML;
     chdir($this->tempDir);
     $workflow = $this->workflowLoader->load('multi-type');
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'must have exactly one type key');
 });
 
@@ -255,7 +254,7 @@ YAML;
     chdir($this->tempDir);
     $workflow = $this->workflowLoader->load('fail-halt');
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'Step 2 failed:');
 });
 

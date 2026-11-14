@@ -12,8 +12,11 @@ use Symfony\Component\Process\Process;
 class LambdaExecutor implements RemoteExecutor
 {
     private string $functionName;
+
     private string $region;
+
     private ?string $accessKey;
+
     private ?string $secretKey;
 
     public function __construct(
@@ -88,7 +91,7 @@ class LambdaExecutor implements RemoteExecutor
         $process = new Process([
             'aws', 'sts', 'get-caller-identity',
             '--region', $this->region,
-            '--request-timeout', '5'
+            '--request-timeout', '5',
         ]);
 
         if (strlen($this->accessKey) > 0) {
@@ -136,7 +139,7 @@ class LambdaExecutor implements RemoteExecutor
             '--invocation-type', 'RequestResponse',
             '--log-type', 'Tail',
             '--region', $this->region,
-            'outfile', '/dev/stdout'
+            'outfile', '/dev/stdout',
         ];
 
         $process = new Process($args);

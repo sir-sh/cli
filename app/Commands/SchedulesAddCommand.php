@@ -4,10 +4,6 @@ namespace App\Commands;
 
 use App\Services\Scheduling\ScheduleManager;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\Yaml\Yaml;
 
 class SchedulesAddCommand extends Command
 {
@@ -27,8 +23,9 @@ class SchedulesAddCommand extends Command
         $workflow = $this->option('workflow');
         $cron = $this->option('cron');
 
-        if (!$workflow || !$cron) {
+        if (! $workflow || ! $cron) {
             $this->error('Both --workflow and --cron are required');
+
             return Command::FAILURE;
         }
 

@@ -14,17 +14,18 @@ class ScheduleHistory
 
     public function getHistoryPath(): string
     {
-        return $this->configLoader->getProjectDir() . '/' . self::HISTORY_FILE;
+        return $this->configLoader->getProjectDir().'/'.self::HISTORY_FILE;
     }
 
     public function load(): array
     {
         $path = $this->getHistoryPath();
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             return [];
         }
 
         $content = file_get_contents($path);
+
         return json_decode($content, true) ?? [];
     }
 
@@ -33,7 +34,7 @@ class ScheduleHistory
         $path = $this->getHistoryPath();
         $dir = dirname($path);
 
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
 
@@ -50,14 +51,15 @@ class ScheduleHistory
     public function getLastRun(string $scheduleName): ?array
     {
         $history = $this->load();
-        $matches = array_filter($history, fn($e) => $e['scheduleName'] === $scheduleName);
+        $matches = array_filter($history, fn ($e) => $e['scheduleName'] === $scheduleName);
+
         return count($matches) > 0 ? end($matches) : null;
     }
 
     public function isRunning(string $scheduleName): bool
     {
         $last = $this->getLastRun($scheduleName);
-        if (!$last || !isset($last['pid'])) {
+        if (! $last || ! isset($last['pid'])) {
             return false;
         }
 
@@ -68,7 +70,7 @@ class ScheduleHistory
     {
         $this->append([
             'scheduleName' => $scheduleName,
-            'startTime' => (new \DateTimeImmutable())->format(\DateTimeInterface::ISO8601),
+            'startTime' => (new \DateTimeImmutable)->format(\DateTimeInterface::ISO8601),
             'status' => 'running',
             'pid' => $pid,
             'attempt' => 1,
@@ -80,7 +82,7 @@ class ScheduleHistory
         $history = $this->load();
         foreach (array_reverse($history) as $i => $entry) {
             if ($entry['scheduleName'] === $scheduleName && ($entry['status'] ?? '') === 'running') {
-                $history[count($history) - 1 - $i]['endTime'] = (new \DateTimeImmutable())->format(\DateTimeInterface::ISO8601);
+                $history[count($history) - 1 - $i]['endTime'] = (new \DateTimeImmutable)->format(\DateTimeInterface::ISO8601);
                 $history[count($history) - 1 - $i]['status'] = $status;
                 $history[count($history) - 1 - $i]['exitCode'] = $exitCode;
                 $history[count($history) - 1 - $i]['duration'] = round($duration, 2);

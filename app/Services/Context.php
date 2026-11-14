@@ -66,6 +66,10 @@ class Context
      */
     public function getPath(string $path): mixed
     {
+        if ($this->has($path)) {
+            return $this->get($path);
+        }
+
         $parts = explode('.', $path);
         $value = $this->variables;
 
@@ -120,9 +124,10 @@ class Context
     /**
      * Resolve a variable path to a value, returning empty string if not found
      */
-    private function resolvePath(string $path, bool $useEmptyString = true): string|null
+    private function resolvePath(string $path, bool $useEmptyString = true): ?string
     {
         $value = $this->getPath($path);
+
         return $value !== null ? (string) $value : ($useEmptyString ? '' : null);
     }
 }
