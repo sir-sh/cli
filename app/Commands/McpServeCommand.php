@@ -9,7 +9,7 @@ class McpServeCommand extends Command
 {
     protected $signature = 'mcp:serve {--project-dir= : Directory used for workflow discovery}';
 
-    protected $description = 'Serve workflow inspection and approval requests over MCP stdio';
+    protected $description = 'Serve workflow inspection, approval requests, and run status over MCP stdio';
 
     public function handle(): int
     {
