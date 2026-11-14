@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\Mcp\WorkflowServer;
 use Illuminate\Filesystem\Filesystem;
 use Symfony\Component\Process\Process;
 
@@ -87,7 +88,7 @@ YAML);
 });
 
 test('MCP validates its request envelope and uses the negotiated result format', function () {
-    $server = app(\App\Services\Mcp\WorkflowServer::class, ['version' => 'test']);
+    $server = app(WorkflowServer::class, ['version' => 'test']);
     $request = fn (string $method, mixed $params) => $server->receive(json_encode([
         'jsonrpc' => '2.0',
         'id' => 1,
