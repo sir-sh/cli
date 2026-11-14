@@ -254,7 +254,7 @@ test('S010-FR-004: timeout terminates step after specified seconds', function ()
     $wf = <<<'YAML'
 steps:
   - name: slow step
-    shell: "sleep 2 && echo done"
+    shell: 'php -r "sleep(2);" && echo done'
     timeout: 1
 YAML;
     condMakeWorkflow($this->tempDir, 'timeout-step', $wf);
@@ -270,7 +270,7 @@ test('S010-FR-004.a: timeout: 0 means no timeout', function () {
     $wf = <<<'YAML'
 steps:
   - name: no timeout
-    shell: "sleep 1 && echo done"
+    shell: 'php -r "sleep(1);" && echo done'
     timeout: 0
 YAML;
     condMakeWorkflow($this->tempDir, 'no-timeout', $wf);
@@ -643,7 +643,7 @@ test('S010-EC-006: timeout with continueOnError both apply independently', funct
     $wf = <<<'YAML'
 steps:
   - name: timeout with continue
-    shell: "sleep 3 && echo done"
+    shell: 'php -r "sleep(3);" && echo done'
     timeout: 1
     continueOnError: true
   - name: survived
@@ -728,7 +728,7 @@ test('S010-AS-005: timeout terminates step and halts workflow', function () {
     $wf = <<<'YAML'
 steps:
   - name: slow
-    shell: "sleep 5"
+    shell: 'php -r "sleep(5);"'
     timeout: 1
 YAML;
     condMakeWorkflow($this->tempDir, 'as-005', $wf);

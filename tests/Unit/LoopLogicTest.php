@@ -347,7 +347,7 @@ describe('S011: Loop Constructs', function () {
             $result = $runner->run([
                 'steps' => [
                     [
-                        'shell' => 'if [ {{index}} -eq 1 ]; then exit 1; fi; echo {{item}}',
+                        'shell' => 'php -r "if ({{index}} === 1) { exit(1); } echo chr(97 + {{index}});"',
                         'forEach' => ['a', 'b', 'c'],
                         'continueOnError' => true,
                         'saveAs' => 'output',

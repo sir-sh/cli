@@ -266,7 +266,7 @@ test('template resolution: {{shellQuote(var)}} in condition', function () {
     $this->context->set('path', '/tmp/my file');
     // shellQuote in condition resolves to quoted string
     $resolved = $this->context->resolveTemplate('{{shellQuote(path)}}');
-    expect($resolved)->toContain("'"); // escaped
+    expect($resolved)->toBe(escapeshellarg('/tmp/my file'));
 });
 
 test('template resolution: {{default(var, fallback)}} in condition', function () {

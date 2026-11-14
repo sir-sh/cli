@@ -22,11 +22,10 @@ class ConditionEvaluator
     /**
      * Evaluate a condition string
      */
-    public function evaluate(string|false|null $condition): bool
+    public function evaluate(string|bool|null $condition): bool
     {
-        // Handle null/false as unconditional execution
-        if ($condition === null || $condition === false) {
-            return true;
+        if (! is_string($condition)) {
+            return $condition ?? true;
         }
 
         // Resolve template variables in condition

@@ -37,7 +37,6 @@ class WorkflowRunner
 
         foreach ($steps as $index => $step) {
             $stepNum = $index + 1;
-            $step['_stepIndex'] = $index;
             $this->outputStepHeader($stepNum, $step);
 
             if ($dryRun) {
@@ -116,7 +115,7 @@ class WorkflowRunner
                     continue;
                 }
 
-                throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage());
+                throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage(), 0, $e);
             }
         }
 
@@ -163,11 +162,10 @@ class WorkflowRunner
         // Shell command
         if (isset($step['shell'])) {
             $shellResult = $this->executeShell($step, $context);
-            $stepNum = ($step['_stepIndex'] ?? 0) + 1;
 
             if (! $shellResult['success']) {
                 throw new \RuntimeException(
-                    "Step {$stepNum} failed: shell command exited with code {$shellResult['exitCode']}"
+                    "shell command exited with code {$shellResult['exitCode']}"
                 );
             }
 

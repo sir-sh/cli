@@ -273,7 +273,7 @@ test('Context.resolveTemplate resolves shellQuote()', function () {
     $context->set('path', '/tmp/my file');
     $result = $context->resolveTemplate('File: {{shellQuote(path)}}');
 
-    expect($result)->toBe('File: \'/tmp/my file\'');
+    expect($result)->toBe('File: '.escapeshellarg('/tmp/my file'));
 });
 
 test('Context.resolveTemplate resolves default() for missing variable', function () {
