@@ -3,16 +3,15 @@
 namespace App\Commands;
 
 use App\Services\Mcp\WorkflowServer;
-use App\Services\Workflows\WorkflowInspection;
 use LaravelZero\Framework\Commands\Command;
 
 class McpServeCommand extends Command
 {
     protected $signature = 'mcp:serve {--project-dir= : Directory used for workflow discovery}';
 
-    protected $description = 'Serve read-only workflow tools over MCP stdio';
+    protected $description = 'Serve workflow inspection and approval requests over MCP stdio';
 
-    public function handle(WorkflowInspection $inspection): int
+    public function handle(): int
     {
         $directory = $this->option('project-dir');
         if ($directory !== null && (! is_dir($directory) || ! @chdir($directory))) {
@@ -21,7 +20,7 @@ class McpServeCommand extends Command
             return self::FAILURE;
         }
 
-        $server = new WorkflowServer($inspection, (string) config('app.version'));
+        $server = app(WorkflowServer::class, ['version' => (string) config('app.version')]);
         while (($line = fgets(STDIN)) !== false) {
             $response = $server->receive($line);
             if ($response !== null) {

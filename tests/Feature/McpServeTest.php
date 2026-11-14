@@ -68,7 +68,7 @@ YAML);
         expect(array_keys($responses))->toBe(range(1, 8))
             ->and($server->getErrorOutput())->toBe('')
             ->and($responses[1]['protocolVersion'])->toBe('2025-11-25')
-            ->and(array_column($responses[2]['tools'], 'name'))->toBe(['list_workflows', 'show_workflow', 'preview_workflow'])
+            ->and(array_column($responses[2]['tools'], 'name'))->toBe(['list_workflows', 'show_workflow', 'preview_workflow', 'request_workflow_run'])
             ->and($responses[3]['structuredContent'])->toBe($cli(['workflows:list', '--json']))
             ->and($responses[4]['structuredContent'])->toBe($cli(['workflows:show', $name['name'], '--json']))
             ->and($responses[5]['structuredContent'])->toBe($cli(['run', $name['name'], '--dry-run', '--json', '--input=target=private-value']))

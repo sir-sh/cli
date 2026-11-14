@@ -18,7 +18,8 @@ class WorkflowRunner
         private MethodRegistry $methodRegistry,
         private MethodExecutor $methodExecutor,
         private TaskRegistry $taskRegistry,
-        private ?OutputStyle $output = null
+        private ?OutputStyle $output = null,
+        private bool $stream = true,
     ) {}
 
     private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
@@ -221,7 +222,7 @@ class WorkflowRunner
             throw new \RuntimeException("Method not found: {$methodName}");
         }
 
-        return $this->methodExecutor->execute($definition, $args, $context);
+        return $this->methodExecutor->execute($definition, $args, $context, stream: $this->stream);
     }
 
     /**
@@ -263,15 +264,21 @@ class WorkflowRunner
         $errorOutput = '';
 
         try {
-            $process->run(function ($type, $buffer) use (&$output, &$errorOutput) {
-                if ($type === Process::ERR) {
-                    $errorOutput .= $buffer;
-                    fwrite(STDERR, $buffer);
-                } else {
-                    $output .= $buffer;
-                    echo $buffer;
-                }
-            });
+            if ($this->stream) {
+                $process->run(function ($type, $buffer) use (&$output, &$errorOutput) {
+                    if ($type === Process::ERR) {
+                        $errorOutput .= $buffer;
+                        fwrite(STDERR, $buffer);
+                    } else {
+                        $output .= $buffer;
+                        echo $buffer;
+                    }
+                });
+            } else {
+                $process->run();
+                $output = $process->getOutput();
+                $errorOutput = $process->getErrorOutput();
+            }
         } catch (ProcessTimedOutException) {
             $command = $this->formatShellCommand($command);
 
