@@ -22,7 +22,7 @@ inputs:
     sensitive: true
 steps:
   - name: Record an approved run
-    shell: "printf 'approved\\n' >> result.txt"
+    shell: "printf '%s' {{shellQuote(secret)}}; printf '%s' {{shellQuote(secret)}} >&2; printf 'approved\\n' >> result.txt"
 YAML);
 });
 

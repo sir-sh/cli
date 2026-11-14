@@ -60,7 +60,7 @@ class RunPlan
             'methods' => $methods,
             'dependencies' => $dependencies,
             'preview' => ['project' => $project, 'revision' => $revision] + $preview,
-            'fingerprint' => hash('sha256', serialize([$project, $identity['dev'], $identity['ino'], $revision, $workflow, $dependencies])),
+            'fingerprint' => hash('sha256', serialize([config('app.version'), $project, $identity['dev'], $identity['ino'], $revision, $workflow, $dependencies])),
         ];
     }
 }

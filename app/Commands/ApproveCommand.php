@@ -56,7 +56,7 @@ class ApproveCommand extends Command
             $plan = $this->resolveReviewedPlan($plans, $request);
             $pending->claim($id, $request);
             try {
-                $runner = new WorkflowRunner($plan['methods'], $executor, $tasks);
+                $runner = new WorkflowRunner($plan['methods'], $executor, $tasks, stream: false);
                 $result = $runner->run($plan['workflow'], $request['inputs']);
             } catch (\Throwable) {
                 $this->error('Workflow execution failed. Request a new run to try again.');
