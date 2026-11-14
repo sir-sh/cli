@@ -2,6 +2,8 @@
 
 namespace App\Services\Mcp;
 
+use App\Services\Approvals\PendingRuns;
+use App\Services\Approvals\RunPlan;
 use App\Services\Workflows\WorkflowInputs;
 use App\Services\Workflows\WorkflowInspection;
 use JsonException;
@@ -13,7 +15,12 @@ class WorkflowServer
 
     private ?string $protocolVersion = null;
 
-    public function __construct(private WorkflowInspection $inspection, private string $version) {}
+    public function __construct(
+        private WorkflowInspection $inspection,
+        private string $version,
+        private RunPlan $plans,
+        private PendingRuns $pending,
+    ) {}
 
     public function receive(string $line): ?array
     {
@@ -80,17 +87,20 @@ class WorkflowServer
     {
         $name = ['name' => ['type' => 'string', 'minLength' => 1]];
 
+        $inputs = [
+            'values' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Positional input values'],
+            'inputs' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Named inputs as name=value'],
+        ];
+
         return [
             $this->tool('list_workflows', 'List workflows available in the configured project.', []),
             $this->tool('show_workflow', 'Inspect the metadata and steps for a workflow.', $name),
-            $this->tool('preview_workflow', 'Preview workflow steps without executing them.', $name + [
-                'values' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Positional input values'],
-                'inputs' => ['type' => 'array', 'items' => ['type' => 'string'], 'description' => 'Named inputs as name=value'],
-            ]),
+            $this->tool('preview_workflow', 'Preview workflow steps without executing them.', $name + $inputs),
+            $this->tool('request_workflow_run', 'Request a local run for human approval in the terminal. Does not execute the workflow.', $name + $inputs, readOnly: false),
         ];
     }
 
-    private function tool(string $name, string $description, array $properties): array
+    private function tool(string $name, string $description, array $properties, bool $readOnly = true): array
     {
         $schema = [
             'type' => 'object',
@@ -105,7 +115,7 @@ class WorkflowServer
             'name' => $name,
             'description' => $description,
             'inputSchema' => $schema,
-            'annotations' => ['readOnlyHint' => true, 'openWorldHint' => false],
+            'annotations' => ['readOnlyHint' => $readOnly, 'openWorldHint' => false] + ($readOnly ? [] : ['destructiveHint' => false]),
         ];
     }
 
@@ -134,6 +144,7 @@ class WorkflowServer
         $data = match ($tool['name']) {
             'list_workflows' => $this->inspection->listing(),
             'show_workflow' => $this->inspection->describe($arguments->name),
+            'request_workflow_run' => $this->requestRun($arguments),
             'preview_workflow' => $this->inspection->describe(
                 $arguments->name,
                 fn (array $workflow) => WorkflowInputs::resolve($workflow, $arguments->values ?? [], $arguments->inputs ?? []),
@@ -141,6 +152,43 @@ class WorkflowServer
         };
 
         return $this->toolResult($data);
+    }
+
+    private function requestRun(stdClass $arguments): array
+    {
+        try {
+            $plan = $this->plans->resolve($arguments->name);
+        } catch (\RuntimeException $exception) {
+            $message = $exception->getMessage();
+            $errors = ['workflow_not_found', 'unsupported_workflow_type', 'workflow_changed'];
+
+            return ['error' => in_array($message, $errors, true) ? $message : 'invalid_workflow'];
+        } catch (\Exception|\TypeError) {
+            return ['error' => 'invalid_workflow'];
+        }
+
+        try {
+            $inputs = WorkflowInputs::resolve($plan['workflow'], $arguments->values ?? [], $arguments->inputs ?? []);
+        } catch (\InvalidArgumentException) {
+            return ['error' => 'invalid_inputs'];
+        }
+
+        try {
+            $id = $this->pending->create([
+                'project' => $plan['preview']['project'],
+                'name' => $arguments->name,
+                'fingerprint' => $plan['fingerprint'],
+                'inputs' => $inputs,
+            ]);
+        } catch (\Exception) {
+            return ['error' => 'request_storage_unavailable'];
+        }
+
+        return [
+            'requestId' => $id,
+            'expiresIn' => PendingRuns::LIFETIME_SECONDS,
+            'preview' => $plan['preview'],
+        ];
     }
 
     private function stringList(stdClass $arguments, string $field): bool
