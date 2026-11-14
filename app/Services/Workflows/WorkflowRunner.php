@@ -2,6 +2,7 @@
 
 namespace App\Services\Workflows;
 
+use App\Services\ConditionEvaluator;
 use App\Services\Context;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
@@ -25,9 +26,9 @@ class WorkflowRunner
      *
      * @return array{success: bool, stepCount: int, elapsedSeconds: float, steps: array}
      */
-    public function run(array $workflow, array $inputs, bool $dryRun = false): array
+    public function run(array $workflow, array $inputs, bool $dryRun = false, ?Context $context = null): array
     {
-        $context = new Context;
+        $context ??= new Context;
         $context->setInputs($inputs);
 
         $steps = $workflow['steps'] ?? [];
@@ -36,7 +37,6 @@ class WorkflowRunner
 
         foreach ($steps as $index => $step) {
             $stepNum = $index + 1;
-            $step['_stepIndex'] = $index;
             $this->outputStepHeader($stepNum, $step);
 
             if ($dryRun) {
@@ -52,6 +52,27 @@ class WorkflowRunner
                 ];
 
                 continue;
+            }
+
+            // Evaluate if condition
+            if (isset($step['if'])) {
+                $evaluator = new ConditionEvaluator($context);
+                $conditionResult = $evaluator->evaluate($step['if']);
+                if (! $conditionResult) {
+                    $this->output?->writeln('<comment>Skipped (condition not met)</comment>');
+                    $stepResults[] = [
+                        'index' => $index,
+                        'name' => $step['name'] ?? $this->getStepName($step),
+                        'type' => $this->getStepType($step),
+                        'success' => true,
+                        'elapsedSeconds' => 0.0,
+                        'output' => null,
+                        'skipped' => true,
+                        'reason' => 'Condition not met',
+                    ];
+
+                    continue;
+                }
             }
 
             $stepStartTime = microtime(true);
@@ -87,7 +108,14 @@ class WorkflowRunner
                     'output' => null,
                 ];
 
-                throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage());
+                // Check continueOnError
+                if (! empty($step['continueOnError'])) {
+                    $this->output?->writeln('<comment>Step failed but continueOnError is true — continuing workflow</comment>');
+
+                    continue;
+                }
+
+                throw new \RuntimeException("Step {$stepNum} failed: ".$e->getMessage(), 0, $e);
             }
         }
 
@@ -108,6 +136,19 @@ class WorkflowRunner
     {
         $this->validateStepTypeKeys($step);
 
+        if (isset($step['forEach'])) {
+            $loopExecutor = new LoopExecutor;
+            $items = $loopExecutor->resolveForEach($step, $context);
+            unset($step['forEach']);
+
+            return $loopExecutor->executeLoop(
+                $step,
+                $items,
+                $context,
+                fn (Context $loopContext) => $this->executeStep($step, $loopContext),
+            );
+        }
+
         // Method call
         if (isset($step['method'])) {
             return $this->executeMethod($step, $context);
@@ -121,11 +162,10 @@ class WorkflowRunner
         // Shell command
         if (isset($step['shell'])) {
             $shellResult = $this->executeShell($step, $context);
-            $stepNum = ($step['_stepIndex'] ?? 0) + 1;
 
             if (! $shellResult['success']) {
                 throw new \RuntimeException(
-                    "Step {$stepNum} failed: shell command exited with code {$shellResult['exitCode']}"
+                    "shell command exited with code {$shellResult['exitCode']}"
                 );
             }
 
@@ -138,7 +178,7 @@ class WorkflowRunner
     private function validateStepTypeKeys(array $step): void
     {
         $typeKeys = self::STEP_TYPE_KEYS;
-        $presentKeys = array_filter($typeKeys, fn($k) => isset($step[$k]));
+        $presentKeys = array_filter($typeKeys, fn ($k) => isset($step[$k]));
         $presentKeys = array_values($presentKeys);
 
         // Count how many type keys are present
@@ -214,7 +254,7 @@ class WorkflowRunner
         $resolvedCommand = $context->resolveTemplate($command);
 
         $process = Process::fromShellCommandline($resolvedCommand);
-        $process->setTimeout(null);
+        $process->setTimeout($step['timeout'] ?? null);
 
         $output = '';
         $errorOutput = '';
@@ -261,6 +301,7 @@ class WorkflowRunner
         if (isset($step['shell'])) {
             return 'shell';
         }
+
         return 'unknown';
     }
 

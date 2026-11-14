@@ -3,15 +3,15 @@
 namespace Tests\Unit;
 
 use App\Services\Context;
+use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
-use PHPUnit\Framework\TestCase;
 
 beforeEach(function () {
-    $this->layerResolver = new \App\Services\LayerResolver;
+    $this->layerResolver = new LayerResolver;
     $this->workflowLoader = new WorkflowLoader($this->layerResolver);
     $this->taskRegistry = new TaskRegistry;
     $this->methodRegistry = new MethodRegistry($this->layerResolver);
@@ -223,7 +223,7 @@ YAML;
     chdir($this->tempDir);
     $workflow = $this->workflowLoader->load('no-type');
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'has no type key');
 });
 
@@ -238,7 +238,7 @@ YAML;
     chdir($this->tempDir);
     $workflow = $this->workflowLoader->load('multi-type');
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'must have exactly one type key');
 });
 
@@ -255,7 +255,7 @@ YAML;
     chdir($this->tempDir);
     $workflow = $this->workflowLoader->load('fail-halt');
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'Step 2 failed:');
 });
 
@@ -274,7 +274,7 @@ test('Context.resolveTemplate resolves shellQuote()', function () {
     $context->set('path', '/tmp/my file');
     $result = $context->resolveTemplate('File: {{shellQuote(path)}}');
 
-    expect($result)->toBe('File: \'/tmp/my file\'');
+    expect($result)->toBe('File: '.escapeshellarg('/tmp/my file'));
 });
 
 test('Context.resolveTemplate resolves default() for missing variable', function () {

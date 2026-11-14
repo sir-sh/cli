@@ -4,7 +4,6 @@ namespace Tests\Unit;
 
 use App\Services\ConfigLoader;
 use App\Services\LayerResolver;
-use PHPUnit\Framework\TestCase;
 
 beforeEach(function () {
     $this->configLoader = new ConfigLoader(new LayerResolver);
@@ -138,7 +137,7 @@ test('AS-008: no config files anywhere returns empty array', function () {
 // === Edge Cases ===
 
 test('EC-001: empty config file skipped silently', function () {
-    makeLayer($this->tempDir, "");
+    makeLayer($this->tempDir, '');
 
     $config = $this->configLoader->loadConfig($this->tempDir);
 

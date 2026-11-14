@@ -2,6 +2,20 @@
 
 namespace App\Providers;
 
+use App\Services\ConfigLoader;
+use App\Services\LayerResolver;
+use App\Services\Methods\MethodExecutor;
+use App\Services\Methods\MethodRegistry;
+use App\Services\Packs\PackManager;
+use App\Services\Tasks\BuiltIn\CodeRabbitReviewTask;
+use App\Services\Tasks\BuiltIn\TestsAutoTask;
+use App\Services\Tasks\BuiltIn\WorkspaceTempTask;
+use App\Services\Tasks\Files\FilesWriteMdTask;
+use App\Services\Tasks\Files\FilesWriteTask;
+use App\Services\Tasks\Git\GitCloneTask;
+use App\Services\Tasks\TaskRegistry;
+use App\Services\Workflows\WorkflowLoader;
+use App\Services\Workflows\WorkflowRunner;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -20,52 +34,52 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         // Register LayerResolver
-        $this->app->singleton(\App\Services\LayerResolver::class);
+        $this->app->singleton(LayerResolver::class);
 
         // Register ConfigLoader
-        $this->app->singleton(\App\Services\ConfigLoader::class);
+        $this->app->singleton(ConfigLoader::class);
 
         // Register PackManager with paths
-        $this->app->singleton(\App\Services\Packs\PackManager::class, function ($app) {
-            $layerResolver = $app->make(\App\Services\LayerResolver::class);
+        $this->app->singleton(PackManager::class, function ($app) {
+            $layerResolver = $app->make(LayerResolver::class);
             $globalSir = $layerResolver->getGlobalSirPath();
 
-            return new \App\Services\Packs\PackManager(
+            return new PackManager(
                 $globalSir.'/packs',
                 $globalSir.'/packs.lock.json'
             );
         });
 
         // Register MethodRegistry
-        $this->app->singleton(\App\Services\Methods\MethodRegistry::class);
+        $this->app->singleton(MethodRegistry::class);
 
         // Register MethodExecutor
-        $this->app->singleton(\App\Services\Methods\MethodExecutor::class);
+        $this->app->singleton(MethodExecutor::class);
 
         // Register WorkflowLoader
-        $this->app->singleton(\App\Services\Workflows\WorkflowLoader::class);
+        $this->app->singleton(WorkflowLoader::class);
 
         // Register TaskRegistry and register built-in tasks
-        $this->app->singleton(\App\Services\Tasks\TaskRegistry::class, function ($app) {
-            $registry = new \App\Services\Tasks\TaskRegistry;
+        $this->app->singleton(TaskRegistry::class, function ($app) {
+            $registry = new TaskRegistry;
 
             // Register built-in tasks
-            $registry->register('workspace.temp', new \App\Services\Tasks\BuiltIn\WorkspaceTempTask);
-            $registry->register('files.write', new \App\Services\Tasks\Files\FilesWriteTask);
-            $registry->register('files.writeMd', new \App\Services\Tasks\Files\FilesWriteMdTask);
-            $registry->register('git.clone', new \App\Services\Tasks\Git\GitCloneTask);
-            $registry->register('tests.auto', new \App\Services\Tasks\BuiltIn\TestsAutoTask);
-            $registry->register('coderabbit.review', new \App\Services\Tasks\BuiltIn\CodeRabbitReviewTask);
+            $registry->register('workspace.temp', new WorkspaceTempTask);
+            $registry->register('files.write', new FilesWriteTask);
+            $registry->register('files.writeMd', new FilesWriteMdTask);
+            $registry->register('git.clone', new GitCloneTask);
+            $registry->register('tests.auto', new TestsAutoTask);
+            $registry->register('coderabbit.review', new CodeRabbitReviewTask);
 
             return $registry;
         });
 
         // Register WorkflowRunner with OutputStyle
-        $this->app->bind(\App\Services\Workflows\WorkflowRunner::class, function ($app) {
-            return new \App\Services\Workflows\WorkflowRunner(
-                $app->make(\App\Services\Methods\MethodRegistry::class),
-                $app->make(\App\Services\Methods\MethodExecutor::class),
-                $app->make(\App\Services\Tasks\TaskRegistry::class),
+        $this->app->bind(WorkflowRunner::class, function ($app) {
+            return new WorkflowRunner(
+                $app->make(MethodRegistry::class),
+                $app->make(MethodExecutor::class),
+                $app->make(TaskRegistry::class),
                 null // OutputStyle will be set by commands
             );
         });

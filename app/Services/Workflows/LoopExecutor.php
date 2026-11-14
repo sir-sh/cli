@@ -2,8 +2,8 @@
 
 namespace App\Services\Workflows;
 
-use App\Services\Context;
 use App\Services\ConditionEvaluator;
+use App\Services\Context;
 
 class LoopExecutor
 {
@@ -52,6 +52,7 @@ class LoopExecutor
                         'skipped' => true,
                         'reason' => 'continueOn condition met',
                     ];
+
                     continue;
                 }
             }
@@ -125,6 +126,7 @@ class LoopExecutor
                 if (! is_array($value)) {
                     throw new \InvalidArgumentException("forEach template '{$forEach}' resolved to non-array value");
                 }
+
                 return $value;
             }
 
@@ -138,9 +140,9 @@ class LoopExecutor
     /**
      * Create a loop context with item and index variables
      */
-    private function createLoopContext(Context $context, string $as, mixed $item, int $index): Context
+    private function createLoopContext(Context $context, string $as, mixed $item, int|string $index): Context
     {
-        $loopContext = $context->clone();
+        $loopContext = clone $context;
         $loopContext->set($as, $item);
         $loopContext->set('index', $index);
 
@@ -162,6 +164,7 @@ class LoopExecutor
         if (empty($arr)) {
             return false;
         }
+
         return array_keys($arr) !== range(0, count($arr) - 1);
     }
 
@@ -173,6 +176,7 @@ class LoopExecutor
         if (preg_match('/^\{\{(\w+)\}\}$/', $template, $matches)) {
             return $matches[1];
         }
+
         return null;
     }
 }

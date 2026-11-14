@@ -3,17 +3,18 @@
 namespace Tests\Unit;
 
 use App\Services\Context;
+use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
+use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
-use Illuminate\Console\OutputStyle;
 
 beforeEach(function () {
     $this->context = new Context;
     $context = $this->context; // local alias so tests can use $context directly
-    $this->layerResolver = new \App\Services\LayerResolver;
-    $this->workflowLoader = new \App\Services\Workflows\WorkflowLoader($this->layerResolver);
+    $this->layerResolver = new LayerResolver;
+    $this->workflowLoader = new WorkflowLoader($this->layerResolver);
     $this->taskRegistry = new TaskRegistry;
     $this->methodRegistry = new MethodRegistry($this->layerResolver);
     $this->methodExecutor = new MethodExecutor;
@@ -245,7 +246,7 @@ YAML;
     $workflow = $this->workflowLoader->load('halt-on-fail');
     $context = $this->context;
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'Step 1 failed:');
 });
 
@@ -255,7 +256,7 @@ test('S010-FR-004: timeout terminates step after specified seconds', function ()
     $wf = <<<'YAML'
 steps:
   - name: slow step
-    shell: "sleep 2 && echo done"
+    shell: 'php -r "sleep(2);" && echo done'
     timeout: 1
 YAML;
     condMakeWorkflow($this->tempDir, 'timeout-step', $wf);
@@ -263,7 +264,7 @@ YAML;
     $workflow = $this->workflowLoader->load('timeout-step');
     $context = $this->context;
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'exceeded the timeout');
 });
 
@@ -271,7 +272,7 @@ test('S010-FR-004.a: timeout: 0 means no timeout', function () {
     $wf = <<<'YAML'
 steps:
   - name: no timeout
-    shell: "sleep 1 && echo done"
+    shell: 'php -r "sleep(1);" && echo done'
     timeout: 0
 YAML;
     condMakeWorkflow($this->tempDir, 'no-timeout', $wf);
@@ -644,7 +645,7 @@ test('S010-EC-006: timeout with continueOnError both apply independently', funct
     $wf = <<<'YAML'
 steps:
   - name: timeout with continue
-    shell: "sleep 3 && echo done"
+    shell: 'php -r "sleep(3);" && echo done'
     timeout: 1
     continueOnError: true
   - name: survived
@@ -729,7 +730,7 @@ test('S010-AS-005: timeout terminates step and halts workflow', function () {
     $wf = <<<'YAML'
 steps:
   - name: slow
-    shell: "sleep 5"
+    shell: 'php -r "sleep(5);"'
     timeout: 1
 YAML;
     condMakeWorkflow($this->tempDir, 'as-005', $wf);
@@ -737,7 +738,7 @@ YAML;
     $workflow = $this->workflowLoader->load('as-005');
     $context = $this->context;
 
-    expect(fn() => $this->workflowRunner->run($workflow, [], false))
+    expect(fn () => $this->workflowRunner->run($workflow, [], false))
         ->toThrow(\RuntimeException::class, 'exceeded the timeout');
 });
 

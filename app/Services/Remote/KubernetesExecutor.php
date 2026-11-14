@@ -12,9 +12,13 @@ use Symfony\Component\Process\Process;
 class KubernetesExecutor implements RemoteExecutor
 {
     private string $cluster;
+
     private string $namespace;
+
     private ?string $context;
+
     private string $image;
+
     private array $resourceLimits;
 
     public function __construct(
@@ -37,7 +41,7 @@ class KubernetesExecutor implements RemoteExecutor
 
         try {
             // Package the workflow
-            $packager = new WorkflowPackager();
+            $packager = new WorkflowPackager;
             $package = $packager->package($workflow, $inputs);
             $packageJson = json_encode($package);
 
@@ -187,7 +191,7 @@ class KubernetesExecutor implements RemoteExecutor
             'kubectl', 'get', 'pod', $podName,
             '-n', $this->namespace,
             '-o', 'jsonpath={.status.phase}',
-            '--request-timeout=5s'
+            '--request-timeout=5s',
         ];
 
         if ($this->context) {
@@ -207,7 +211,7 @@ class KubernetesExecutor implements RemoteExecutor
         $args = [
             'kubectl', 'exec', $podName, '-n', $this->namespace,
             '--', 'cat', '/tmp/result.json',
-            '--request-timeout=10s'
+            '--request-timeout=10s',
         ];
 
         if ($this->context) {
@@ -238,7 +242,7 @@ class KubernetesExecutor implements RemoteExecutor
         $args = [
             'kubectl', 'delete', 'pod', $podName,
             '-n', $this->namespace,
-            '--request-timeout=30s'
+            '--request-timeout=30s',
         ];
 
         if ($this->context) {

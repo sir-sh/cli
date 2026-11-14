@@ -6,16 +6,18 @@ use App\Services\ConfigLoader;
 use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
-use App\Services\Remote\RemoteExecutorFactory;
 use App\Services\Remote\RemoteExecutionException;
+use App\Services\Remote\RemoteExecutorFactory;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
 use LaravelZero\Framework\Commands\Command;
+use Symfony\Component\Yaml\Yaml;
 
 class RunWorkflowCommand extends Command
 {
-    protected $signature = 'run {workflow}
+    protected $signature = 'run {workflow} {values?* : Workflow input values in declaration order}
+                            {--input=* : Named workflow input as name=value}
                             {--dry-run : Show what would be executed}
                             {--yes : Skip confirmations}
                             {--non-interactive : Run without prompts}
@@ -42,6 +44,12 @@ class RunWorkflowCommand extends Command
 
         // Handle remote execution if specified
         if ($remoteUri || $remoteConfigPath) {
+            if ($dryRun) {
+                $this->error('Dry run is available for local workflows only.');
+
+                return self::FAILURE;
+            }
+
             return $this->handleRemoteExecution(
                 $workflowName,
                 $workflowLoader,
@@ -77,16 +85,13 @@ class RunWorkflowCommand extends Command
             $this->line("  Location: {$workflow['_meta']['path']}");
         }
 
-        // Gather inputs
-        $inputs = $this->gatherInputs($workflow);
-
         if ($dryRun) {
             $this->warn("\n[DRY RUN MODE]");
         }
 
         // Run workflow
         try {
-            $result = $workflowRunner->run($workflow, $inputs, $dryRun);
+            $workflowRunner->run($workflow, $this->gatherInputs($workflow), $dryRun);
 
             $this->newLine();
             $this->info('✓ Workflow completed successfully');
@@ -105,38 +110,42 @@ class RunWorkflowCommand extends Command
         $inputDefs = $workflow['inputs'] ?? [];
         $inputs = [];
 
-        // Get inputs from command arguments/options
+        $positional = $this->argument('values');
+        $named = [];
+
+        foreach ($this->option('input') as $assignment) {
+            [$name, $value] = array_pad(explode('=', $assignment, 2), 2, null);
+            if ($value === null || ! array_key_exists($name, $inputDefs) || array_key_exists($name, $named)) {
+                throw new \InvalidArgumentException("Invalid or duplicate workflow input: {$name}");
+            }
+
+            $named[$name] = $value;
+        }
+
         foreach ($inputDefs as $name => $def) {
             $required = $def['required'] ?? false;
             $default = $def['default'] ?? null;
             $description = $def['description'] ?? $name;
 
-            // Check if provided as argument (after workflow name)
-            $allArgs = $_SERVER['argv'] ?? [];
-            $workflowIndex = array_search($this->argument('workflow'), $allArgs);
-
-            if ($workflowIndex !== false && isset($allArgs[$workflowIndex + 1])) {
-                $nextArg = $allArgs[$workflowIndex + 1];
-                if (! str_starts_with($nextArg, '--')) {
-                    $inputs[$name] = $nextArg;
-
-                    continue;
-                }
-            }
-
-            // Check if provided as option
-            if ($this->hasOption($name) && $this->option($name)) {
+            if (array_key_exists($name, $named)) {
+                $inputs[$name] = $named[$name];
+            } elseif ($positional !== []) {
+                $inputs[$name] = array_shift($positional);
+            } elseif ($name !== 'input' && $this->hasOption($name) && $this->option($name)) {
                 $inputs[$name] = $this->option($name);
-
-                continue;
-            }
-
-            // Ask if required and not in non-interactive mode
-            if ($required && ! $this->option('non-interactive')) {
+            } elseif ($required && $this->input->isInteractive() && ! $this->option('non-interactive')) {
                 $inputs[$name] = $this->ask($description, $default);
             } elseif ($default !== null) {
                 $inputs[$name] = $default;
             }
+
+            if ($required && ! isset($inputs[$name])) {
+                throw new \InvalidArgumentException("Missing required workflow input: {$name}");
+            }
+        }
+
+        if ($positional !== []) {
+            throw new \InvalidArgumentException('Too many positional workflow inputs');
         }
 
         return $inputs;
@@ -160,12 +169,10 @@ class RunWorkflowCommand extends Command
             return self::FAILURE;
         }
 
-        // Gather inputs
-        $inputs = $this->gatherInputs($workflow);
-
         try {
+            $inputs = $this->gatherInputs($workflow);
             // Create executor factory
-            $factory = new RemoteExecutorFactory();
+            $factory = new RemoteExecutorFactory;
 
             // Resolve executor from URI or config file
             if ($remoteConfigPath && file_exists($remoteConfigPath)) {
@@ -223,7 +230,7 @@ class RunWorkflowCommand extends Command
     private function loadRemoteConfig(string $path): array
     {
         $content = file_get_contents($path);
-        $parsed = \Symfony\Component\Yaml\Yaml::parse($content);
+        $parsed = Yaml::parse($content);
 
         return is_array($parsed) ? $parsed : [];
     }

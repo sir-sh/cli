@@ -12,7 +12,9 @@ namespace App\Services;
 class ConditionEvaluator
 {
     private const OPERATORS = ['==', '!=', '>=', '<=', '>', '<'];
+
     private const LOGICAL_OPS = ['&&', '||'];
+
     private const STRING_OPS = ['contains', 'startsWith', 'endsWith', 'matches'];
 
     public function __construct(private Context $context) {}
@@ -20,11 +22,10 @@ class ConditionEvaluator
     /**
      * Evaluate a condition string
      */
-    public function evaluate(string|false|null $condition): bool
+    public function evaluate(string|bool|null $condition): bool
     {
-        // Handle null/false as unconditional execution
-        if ($condition === null || $condition === false) {
-            return true;
+        if (! is_string($condition)) {
+            return $condition ?? true;
         }
 
         // Resolve template variables in condition
@@ -44,7 +45,8 @@ class ConditionEvaluator
 
     /**
      * Evaluate a resolved expression
-     * @param bool $fromTemplate Whether this expression came from template resolution
+     *
+     * @param  bool  $fromTemplate  Whether this expression came from template resolution
      */
     private function evaluateExpression(string $expr, bool $fromTemplate = false): bool
     {
@@ -52,19 +54,21 @@ class ConditionEvaluator
 
         // Handle empty condition ONLY if it came directly (not from template resolution)
         // A template that resolved to empty string is a boolean false, not "no condition"
-        if ($expr === '' && !$fromTemplate) {
+        if ($expr === '' && ! $fromTemplate) {
             return true;
         }
 
         // Handle NOT operator first
         if (str_starts_with($expr, '!')) {
             $inner = trim(substr($expr, 1));
-            return !$this->evaluateExpression($inner, false);
+
+            return ! $this->evaluateExpression($inner, false);
         }
 
         // Handle parentheses
         if (str_starts_with($expr, '(') && str_ends_with($expr, ')')) {
             $inner = trim(substr($expr, 1, -1));
+
             return $this->evaluateExpression($inner, false);
         }
 
@@ -76,6 +80,7 @@ class ConditionEvaluator
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -83,10 +88,11 @@ class ConditionEvaluator
         $andParts = $this->splitByOperator($expr, '&&');
         if (count($andParts) > 1) {
             foreach ($andParts as $part) {
-                if (!$this->evaluateExpression(trim($part))) {
+                if (! $this->evaluateExpression(trim($part))) {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -138,9 +144,9 @@ class ConditionEvaluator
                 $depth--;
                 $current .= $char;
             } elseif ($char === '"' || $char === "'") {
-                $inQuotes = !$inQuotes;
+                $inQuotes = ! $inQuotes;
                 $current .= $char;
-            } elseif (!$inQuotes && $depth === 0 && substr($expr, $i, $opLen) === $op) {
+            } elseif (! $inQuotes && $depth === 0 && substr($expr, $i, $opLen) === $op) {
                 $parts[] = $current;
                 $current = '';
                 $i += $opLen - 1;
@@ -173,8 +179,8 @@ class ConditionEvaluator
             } elseif ($char === ')') {
                 $depth--;
             } elseif ($char === '"' || $char === "'") {
-                $inQuotes = !$inQuotes;
-            } elseif (!$inQuotes && $depth === 0) {
+                $inQuotes = ! $inQuotes;
+            } elseif (! $inQuotes && $depth === 0) {
                 // Check for comparison operators at this position
                 foreach (self::OPERATORS as $op) {
                     if (substr($expr, $i, strlen($op)) === $op) {
@@ -204,8 +210,8 @@ class ConditionEvaluator
             } elseif ($char === ')') {
                 $depth--;
             } elseif ($char === '"' || $char === "'") {
-                $inQuotes = !$inQuotes;
-            } elseif (!$inQuotes && $depth === 0 && substr($expr, $i, $opLen) === $op) {
+                $inQuotes = ! $inQuotes;
+            } elseif (! $inQuotes && $depth === 0 && substr($expr, $i, $opLen) === $op) {
                 // Make sure it's followed by whitespace or is at end
                 $next = substr($expr, $i + $opLen, 1);
                 if ($next === ' ' || $next === "\t" || $next === '') {
@@ -231,6 +237,7 @@ class ConditionEvaluator
                     return true;
                 }
             }
+
             return false;
         }
 
@@ -238,10 +245,11 @@ class ConditionEvaluator
         if (count($parts) > 1) {
             // Recursively handle AND
             foreach ($parts as $part) {
-                if (!$this->evaluateComparison(trim($part))) {
+                if (! $this->evaluateComparison(trim($part))) {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -273,7 +281,7 @@ class ConditionEvaluator
     private function evaluateStringOperator(string $expr, string $op): bool
     {
         // Split by the string operator
-        $parts = preg_split('/\s+' . preg_quote($op, '/') . '\s+/', $expr, 2);
+        $parts = preg_split('/\s+'.preg_quote($op, '/').'\s+/', $expr, 2);
 
         if (count($parts) !== 2) {
             return $this->toBoolean($expr);
@@ -306,11 +314,13 @@ class ConditionEvaluator
         });
 
         try {
-            $result = preg_match('/' . $pattern . '/', $value);
+            $result = preg_match('/'.$pattern.'/', $value);
             restore_error_handler();
+
             return $result === 1;
         } catch (\Throwable $e) {
             restore_error_handler();
+
             return false;
         }
     }
@@ -321,6 +331,7 @@ class ConditionEvaluator
     private function evaluateExists(string $expr): bool
     {
         $varName = trim(substr($expr, 7)); // strlen("exists ") = 7
+
         return $this->context->has($varName);
     }
 
@@ -332,11 +343,12 @@ class ConditionEvaluator
         $varName = trim(substr($expr, 8)); // strlen("isEmpty ") = 8
 
         // Only true if variable exists AND is empty string
-        if (!$this->context->has($varName)) {
+        if (! $this->context->has($varName)) {
             return false;
         }
 
         $value = $this->context->get($varName);
+
         return $value === '';
     }
 

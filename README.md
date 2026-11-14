@@ -18,7 +18,7 @@ While the v1 implementation is fully functional for its intended use cases, ther
 
 1. **Template Parsing**: The `default()` function in templates doesn't handle commas or nested parentheses in default values. For v1, use simple string literals as defaults.
 
-2. **Input Gathering**: The RunWorkflowCommand assumes workflow inputs are passed as options or the first positional argument. Multiple positional inputs aren't fully supported - use options for complex workflows.
+2. **Input Gathering**: The CLI accepts positional input values and repeatable named `--input=name=value` options.
 
 3. **Nested Properties**: Template expressions like `{{obj.property}}` aren't supported. Access nested values by setting them as top-level variables in workflow steps.
 
@@ -34,67 +34,39 @@ These limitations are documented and can be addressed in future versions without
 
 ### Setup
 
-```bash
-# Clone the repository
-git clone https://github.com/sir-sh/sir-cli.git
-cd sir-cli
+On Linux or macOS, clone into a directory where you can keep the checkout.
 
-# Install dependencies
-composer install
-
-# Make the application executable
-chmod +x application
-
-# Optional: Create a symlink for global access
-sudo ln -s $(pwd)/application /usr/local/bin/sir
-
-# Or add to your PATH
-export PATH="$PATH:$(pwd)"
+```sh
+git clone https://github.com/sir-sh/cli.git
+cd cli
+composer install --no-dev --no-interaction
+mkdir -p "$HOME/.local/bin"
+ln -s "$PWD/application" "$HOME/.local/bin/sir"
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-## Quick Start
+### Run a local workflow
 
-### 1. Initialize Global Configuration
-
-```bash
-# Create global .sir directory
-mkdir -p ~/.sir/workflows
-mkdir -p ~/.sir/packs
-
-# Copy example workflow and config
-cp examples/workflows/review.yml ~/.sir/workflows/
-cp examples/config.yml ~/.sir/
+```sh
+mkdir -p "$HOME/.sir/workflows"
+cp examples/workflows/hello.yml "$HOME/.sir/workflows/"
+sir workflows:list
+sir run hello --dry-run --non-interactive --input='name=Sir'
+sir run hello --non-interactive --input='name=Sir'
+cat greeting.txt
 ```
 
-### 2. List Available Commands
+The dry run previews the step. The actual run writes `Hello, Sir!` to
+`greeting.txt` in the current directory.
 
-```bash
-sir list
-```
+Pass `--input=name=value` once per named input, or pass positional values in
+declaration order. Named inputs take precedence and positional values fill the
+remaining inputs. A missing required input in non-interactive mode causes a
+nonzero exit. By default, a failing step stops the local run before subsequent
+steps. A step can opt into continuing with `continueOnError: true`.
 
-### 3. Create Your First Workflow
-
-Create `.sir/workflows/hello.yml` in your home directory:
-
-```yaml
-description: "A simple hello world workflow"
-
-inputs:
-  name:
-    type: string
-    required: true
-    description: "Your name"
-
-steps:
-  - shell: "echo 'Hello, {{name}}!'"
-```
-
-### 4. Run the Workflow
-
-```bash
-sir run hello
-# When prompted, enter your name
-```
+To check discovery, dry run, execution, and failure handling in an isolated
+profile, run `sh tests/smoke-local.sh "$(command -v sir)"` from the checkout.
 
 ## Core Commands
 
@@ -317,7 +289,7 @@ cp -r sir-git ~/.sir/packs/
 The included review workflow demonstrates a complete workflow:
 
 ```bash
-sir run review myproject --target=feature/new-feature --base=main
+sir run review myproject --input=target=feature/new-feature --input=base=main
 ```
 
 This workflow:

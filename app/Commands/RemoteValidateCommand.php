@@ -2,9 +2,10 @@
 
 namespace App\Commands;
 
-use App\Services\Remote\RemoteExecutorFactory;
 use App\Services\Remote\RemoteExecutionException;
+use App\Services\Remote\RemoteExecutorFactory;
 use LaravelZero\Framework\Commands\Command;
+use Symfony\Component\Yaml\Yaml;
 
 class RemoteValidateCommand extends Command
 {
@@ -20,7 +21,7 @@ class RemoteValidateCommand extends Command
         $configPath = $this->option('config');
 
         try {
-            $factory = new RemoteExecutorFactory();
+            $factory = new RemoteExecutorFactory;
 
             if ($configPath && file_exists($configPath)) {
                 $config = $this->loadRemoteConfig($configPath);
@@ -46,9 +47,9 @@ class RemoteValidateCommand extends Command
 
                 $capabilities = $executor->getCapabilities();
                 $this->line('  Capabilities:');
-                $this->line("    Streaming: ".($capabilities['streaming'] ? 'yes' : 'no'));
-                $this->line("    Artifacts: ".($capabilities['artifacts'] ? 'yes' : 'no'));
-                $this->line("    Sandbox: ".($capabilities['sandbox'] ? 'yes' : 'no'));
+                $this->line('    Streaming: '.($capabilities['streaming'] ? 'yes' : 'no'));
+                $this->line('    Artifacts: '.($capabilities['artifacts'] ? 'yes' : 'no'));
+                $this->line('    Sandbox: '.($capabilities['sandbox'] ? 'yes' : 'no'));
                 $this->line('    Limits: '.implode(', ', $capabilities['limits']));
 
                 $this->newLine();
@@ -83,7 +84,7 @@ class RemoteValidateCommand extends Command
     private function loadRemoteConfig(string $path): array
     {
         $content = file_get_contents($path);
-        $parsed = \Symfony\Component\Yaml\Yaml::parse($content);
+        $parsed = Yaml::parse($content);
 
         return is_array($parsed) ? $parsed : [];
     }

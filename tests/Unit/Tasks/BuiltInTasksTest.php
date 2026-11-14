@@ -3,14 +3,15 @@
 namespace Tests\Unit\Tasks;
 
 use App\Services\Context;
-use App\Services\Tasks\TaskRegistry;
-use App\Services\Tasks\BuiltIn\WorkspaceTempTask;
-use App\Services\Tasks\BuiltIn\TestsAutoTask;
 use App\Services\Tasks\BuiltIn\CodeRabbitReviewTask;
-use App\Services\Tasks\Files\FilesWriteTask;
+use App\Services\Tasks\BuiltIn\TestsAutoTask;
+use App\Services\Tasks\BuiltIn\WorkspaceTempTask;
 use App\Services\Tasks\Files\FilesWriteMdTask;
+use App\Services\Tasks\Files\FilesWriteTask;
 use App\Services\Tasks\Git\GitCloneTask;
-use PHPUnit\Framework\TestCase;
+use App\Services\Tasks\TaskInterface;
+use App\Services\Tasks\TaskRegistry;
+use Symfony\Component\Process\Process;
 
 beforeEach(function () {
     $this->registry = new TaskRegistry;
@@ -86,7 +87,7 @@ test('S007-FR-001: all built-in tasks implement TaskInterface', function () {
     ];
 
     foreach ($tasks as $task) {
-        expect($task)->toBeInstanceOf(\App\Services\Tasks\TaskInterface::class);
+        expect($task)->toBeInstanceOf(TaskInterface::class);
     }
 });
 
@@ -144,7 +145,7 @@ test('S007-FR-004.b: created directory has 0755 permissions', function () {
 
     $perms = substr(sprintf('%o', fileperms($result['workspace'])), -4);
     expect($perms)->toBe('0755');
-});
+})->skip(PHP_OS_FAMILY === 'Windows', 'POSIX directory modes are unavailable');
 
 test('S007-FR-004: custom prefix argument used', function () {
     $task = new WorkspaceTempTask;
@@ -197,7 +198,7 @@ test('S007-FR-006: files.write writes content to path', function () {
 test('S007-FR-006.a: files.write throws InvalidArgumentException when path missing', function () {
     $task = new FilesWriteTask;
 
-    expect(fn() => $task->execute(['content' => 'test'], new Context))
+    expect(fn () => $task->execute(['content' => 'test'], new Context))
         ->toThrow(\InvalidArgumentException::class);
 });
 
@@ -245,7 +246,7 @@ test('S007-FR-008: files.writeMd writes markdown content', function () {
 test('S007-FR-008.a: files.writeMd throws when path missing', function () {
     $task = new FilesWriteMdTask;
 
-    expect(fn() => $task->execute(['content' => 'test'], new Context))
+    expect(fn () => $task->execute(['content' => 'test'], new Context))
         ->toThrow(\InvalidArgumentException::class);
 });
 
@@ -302,7 +303,7 @@ test('S007-IF-005.a: bytes reflects combined string length with title', function
 test('S007-FR-010: git.clone requires repo argument', function () {
     $task = new GitCloneTask;
 
-    expect(fn() => $task->execute(['folder' => '/tmp/folder'], new Context))
+    expect(fn () => $task->execute(['folder' => '/tmp/folder'], new Context))
         ->toThrow(\InvalidArgumentException::class, 'repo is required');
 });
 
@@ -336,7 +337,7 @@ test('S007-FR-011: git.clone accepts branch argument', function () {
 test('S007-FR-016: tests.auto throws RuntimeException when no test script found', function () {
     $task = new TestsAutoTask;
 
-    expect(fn() => $task->execute(['cwd' => $this->tempDir], new Context))
+    expect(fn () => $task->execute(['cwd' => $this->tempDir], new Context))
         ->toThrow(\RuntimeException::class, 'No test command found');
 });
 
@@ -399,7 +400,7 @@ test('S007-IF-007: tests.auto output has all required keys', function () {
 test('S007-FR-017: coderabbit.review throws when target missing', function () {
     $task = new CodeRabbitReviewTask;
 
-    expect(fn() => $task->execute(['base' => 'main'], new Context))
+    expect(fn () => $task->execute(['base' => 'main'], new Context))
         ->toThrow(\InvalidArgumentException::class, 'target branch is required');
 });
 
@@ -421,12 +422,12 @@ test('S007-FR-018: coderabbit falls back to gh-cli when coderabbit not available
     $task = new CodeRabbitReviewTask;
 
     // Check if gh is installed
-    $process = new \Symfony\Component\Process\Process(['which', 'gh']);
+    $process = new Process(['which', 'gh']);
     $process->run();
     $ghAvailable = $process->isSuccessful();
 
     // Check if coderabbit is installed
-    $process2 = new \Symfony\Component\Process\Process(['which', 'coderabbit']);
+    $process2 = new Process(['which', 'coderabbit']);
     $process2->run();
     $crAvailable = $process2->isSuccessful();
 
@@ -442,20 +443,20 @@ test('S007-FR-018: coderabbit falls back to gh-cli when coderabbit not available
         expect($result)->toHaveKey('markdown');
     } else {
         // Neither available
-        expect(fn() => $task->execute(['target' => 'feature-branch'], new Context))
+        expect(fn () => $task->execute(['target' => 'feature-branch'], new Context))
             ->toThrow(\RuntimeException::class);
     }
 });
 
 test('S007-FR-018.a: gh-cli fallback includes method and markdown', function () {
-    $process = new \Symfony\Component\Process\Process(['which', 'coderabbit']);
+    $process = new Process(['which', 'coderabbit']);
     $process->run();
     if ($process->isSuccessful()) {
         // coderabbit available, skip this specific fallback test
         return;
     }
 
-    $process2 = new \Symfony\Component\Process\Process(['which', 'gh']);
+    $process2 = new Process(['which', 'gh']);
     $process2->run();
     if (! $process2->isSuccessful()) {
         return;
@@ -469,7 +470,7 @@ test('S007-FR-018.a: gh-cli fallback includes method and markdown', function () 
 });
 
 test('S007-IF-008: coderabbit output method is coderabbit-cli or gh-cli', function () {
-    $process = new \Symfony\Component\Process\Process(['which', 'coderabbit']);
+    $process = new Process(['which', 'coderabbit']);
     $process->run();
     $crAvailable = $process->isSuccessful();
 

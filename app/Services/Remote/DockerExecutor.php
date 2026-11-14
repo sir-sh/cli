@@ -12,9 +12,13 @@ use Symfony\Component\Process\Process;
 class DockerExecutor implements RemoteExecutor
 {
     private string $image;
+
     private array $environment;
+
     private array $volumes;
+
     private ?int $memoryLimit;
+
     private ?int $cpuLimit;
 
     public function __construct(

@@ -4,6 +4,7 @@ namespace App\Commands;
 
 use App\Services\Remote\RemoteExecutorFactory;
 use LaravelZero\Framework\Commands\Command;
+use Symfony\Component\Yaml\Yaml;
 
 class RemoteListCommand extends Command
 {
@@ -35,7 +36,7 @@ class RemoteListCommand extends Command
             $this->info('Configured remotes:');
             $this->newLine();
 
-            $factory = new RemoteExecutorFactory();
+            $factory = new RemoteExecutorFactory;
 
             $rows = [];
             foreach ($config['remotes'] as $name => $remoteConfig) {
@@ -73,7 +74,7 @@ class RemoteListCommand extends Command
     private function loadRemoteConfig(string $path): array
     {
         $content = file_get_contents($path);
-        $parsed = \Symfony\Component\Yaml\Yaml::parse($content);
+        $parsed = Yaml::parse($content);
 
         return is_array($parsed) ? $parsed : [];
     }

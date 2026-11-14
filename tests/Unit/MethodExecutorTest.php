@@ -24,7 +24,7 @@ test('validates required arguments', function () {
 
     // This should throw an exception
     $this->executor->execute($definition, [], $this->context, false);
-})->throws(\InvalidArgumentException::class);
+})->throws(InvalidArgumentException::class);
 
 test('applies default values', function () {
     $definition = [
@@ -107,4 +107,4 @@ test('throws on unknown implementation type', function () {
     ];
 
     $this->executor->execute($definition, [], $this->context, false);
-})->throws(\InvalidArgumentException::class);
+})->throws(InvalidArgumentException::class);

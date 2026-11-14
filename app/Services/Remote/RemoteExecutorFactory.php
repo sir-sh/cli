@@ -14,7 +14,7 @@ class RemoteExecutorFactory
      *
      * @param  string  $uri  Remote target URI (e.g., ssh://user@host, docker://image)
      * @param  array  $config  Optional configuration for the executor
-     * @return RemoteExecutor
+     *
      * @throws InvalidArgumentException if URI scheme is not supported
      */
     public function fromUri(string $uri, array $config = []): RemoteExecutor
@@ -44,7 +44,6 @@ class RemoteExecutorFactory
      *
      * @param  string  $name  The name of the remote configuration
      * @param  array  $config  The remote configuration
-     * @return RemoteExecutor
      */
     public function fromConfig(string $name, array $config): RemoteExecutor
     {

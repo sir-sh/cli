@@ -1,5 +1,6 @@
 <?php
 
+use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\Files\FilesWriteTask;
@@ -36,7 +37,7 @@ YAML;
     file_put_contents($tempDir.'/.sir/workflows/integration-test.yml', $workflowContent);
 
     // Setup services with isolated layer resolver
-    $layerResolver = new \App\Services\LayerResolver;
+    $layerResolver = new LayerResolver;
 
     $taskRegistry = new TaskRegistry;
     $taskRegistry->register('files.write', new FilesWriteTask);
@@ -101,10 +102,10 @@ YAML;
     file_put_contents($tempDir.'/.sir/workflows/shell-test.yml', $workflowContent);
 
     $taskRegistry = new TaskRegistry;
-    $methodRegistry = new MethodRegistry(new \App\Services\LayerResolver);
+    $methodRegistry = new MethodRegistry(new LayerResolver);
     $methodExecutor = new MethodExecutor;
 
-    $workflowLoader = new WorkflowLoader(new \App\Services\LayerResolver);
+    $workflowLoader = new WorkflowLoader(new LayerResolver);
     $workflowRunner = new WorkflowRunner(
         $methodRegistry,
         $methodExecutor,

@@ -4,9 +4,6 @@ namespace App\Commands;
 
 use App\Services\Scheduling\ScheduleManager;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
-use Symfony\Component\Console\Input\InputOption;
-use Symfony\Component\Console\Output\OutputInterface;
 
 class SchedulesTestCommand extends Command
 {
@@ -35,8 +32,9 @@ class SchedulesTestCommand extends Command
             }
         }
 
-        if (!$schedule) {
+        if (! $schedule) {
             $this->error("Schedule '{$name}' not found");
+
             return Command::FAILURE;
         }
 

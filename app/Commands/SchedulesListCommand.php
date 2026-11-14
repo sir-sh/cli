@@ -5,8 +5,6 @@ namespace App\Commands;
 use App\Services\Scheduling\ScheduleManager;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Helper\Table;
-use Symfony\Component\Console\Input\InputInterface;
-use Symfony\Component\Console\Output\OutputInterface;
 
 class SchedulesListCommand extends Command
 {
@@ -26,6 +24,7 @@ class SchedulesListCommand extends Command
 
         if (empty($schedules)) {
             $this->info('No schedules configured');
+
             return Command::SUCCESS;
         }
 

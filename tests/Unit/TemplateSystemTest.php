@@ -3,17 +3,16 @@
 namespace Tests\Unit;
 
 use App\Services\Context;
+use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
-use App\Services\LayerResolver;
-use App\Services\Workflows\WorkflowRunner;
-use App\Services\Workflows\WorkflowLoader;
 use App\Services\Tasks\TaskRegistry;
-use PHPUnit\Framework\TestCase;
+use App\Services\Workflows\WorkflowLoader;
+use App\Services\Workflows\WorkflowRunner;
 
 beforeEach(function () {
     $this->context = new Context;
-    $this->layerResolver = new \App\Services\LayerResolver;
+    $this->layerResolver = new LayerResolver;
     $this->workflowLoader = new WorkflowLoader($this->layerResolver);
     $this->taskRegistry = new TaskRegistry;
     $this->methodRegistry = new MethodRegistry($this->layerResolver);
@@ -104,15 +103,13 @@ test('S004-FR-003: shellQuote wraps value in escapeshellarg', function () {
     $this->context->set('file', 'test file.txt');
     $result = $this->context->resolveTemplate('cat {{shellQuote(file)}}');
 
-    expect($result)->toContain("'test file.txt'");
-    // escapeshellarg on "test file.txt" produces 'test file.txt' with surrounding single quotes
-    expect($result)->toBe('cat \'test file.txt\'');
+    expect($result)->toBe('cat '.escapeshellarg('test file.txt'));
 });
 
 test('S004-FR-003.a: shellQuote with undefined variable produces empty quoted', function () {
     $result = $this->context->resolveTemplate('{{shellQuote(undefinedVar)}}');
 
-    expect($result)->toBe("''");
+    expect($result)->toBe(escapeshellarg(''));
 });
 
 test('S004-FR-003.b: shellQuote argument must be simple variable name', function () {
@@ -123,7 +120,7 @@ test('S004-FR-003.b: shellQuote argument must be simple variable name', function
     $result = $this->context->resolveTemplate('{{shellQuote(nestedpath)}}');
 
     // "nestedpath" as a simple variable name exists → escapeshellarg
-    expect($result)->toBe("'/tmp/real'");
+    expect($result)->toBe(escapeshellarg('/tmp/real'));
 });
 
 // === default Function ===
@@ -259,7 +256,7 @@ test('S004-EC-001: undefined variable resolves to empty string', function () {
 test('S004-EC-002: shellQuote undefined variable produces empty quoted', function () {
     $result = $this->context->resolveTemplate('{{shellQuote(undefinedVar)}}');
 
-    expect($result)->toBe("''");
+    expect($result)->toBe(escapeshellarg(''));
 });
 
 test('S004-EC-003: default with defined empty string (v1 behavior)', function () {
@@ -271,16 +268,10 @@ test('S004-EC-003: default with defined empty string (v1 behavior)', function ()
 });
 
 test('S004-EC-004: shellQuote with special shell characters', function () {
-    $specialChars = [
-        "my file.txt" => "'my file.txt'",
-        "a;b" => "'a;b'",
-        "a b c" => "'a b c'",
-    ];
-
-    foreach ($specialChars as $value => $expected) {
+    foreach (['my file.txt', 'a;b', 'a b c'] as $value) {
         $this->context->set('val', $value);
         $result = $this->context->resolveTemplate('{{shellQuote(val)}}');
-        expect($result)->toBe($expected);
+        expect($result)->toBe(escapeshellarg($value));
     }
 });
 
@@ -335,8 +326,7 @@ test('S004-AS-002: shellQuote prevents injection / word-splitting', function () 
     $this->context->set('file', 'test file.txt');
     $result = $this->context->resolveTemplate('cat {{shellQuote(file)}}');
 
-    // Result contains single-quoted version (escapeshellarg produces 'test file.txt')
-    expect($result)->toBe("cat 'test file.txt'");
+    expect($result)->toBe('cat '.escapeshellarg('test file.txt'));
 });
 
 test('S004-AS-003: default provides fallback for missing variable', function () {
@@ -411,8 +401,7 @@ test('S004-SC-006: shellQuote produces escapeshellarg output', function () {
     $this->context->set('file', 'test file.txt');
     $result = $this->context->resolveTemplate('{{shellQuote(file)}}');
 
-    // escapeshellarg produces single-quoted string on Unix
-    expect($result)->toBe("'test file.txt'");
+    expect($result)->toBe(escapeshellarg('test file.txt'));
 });
 
 test('S004-SC-009: unquoted template injection cannot execute arbitrary commands', function () {
