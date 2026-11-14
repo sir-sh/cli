@@ -47,24 +47,29 @@ class ApproveCommand extends Command
 
             $this->output->writeln(json_encode($preview, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR), OutputInterface::OUTPUT_RAW);
             if ($this->ask('Type approve to run this workflow') !== 'approve') {
-                $pending->claim($id, $request);
+                $pending->decline($id, $request);
                 $this->warn('Request declined.');
 
                 return self::FAILURE;
             }
 
             $plan = $this->resolveReviewedPlan($plans, $request);
-            $pending->claim($id, $request);
-            try {
+            $outcome = $pending->execute($id, $request, function () use ($plan, $executor, $tasks, $request): string {
                 $runner = new WorkflowRunner($plan['methods'], $executor, $tasks, stream: false);
                 $result = $runner->run($plan['workflow'], $request['inputs']);
-            } catch (\Throwable) {
+
+                $failed = array_filter($result['steps'], fn (array $step) => $step['success'] === false || $this->failedOutput($step['output']));
+
+                return $failed ? 'step_failed' : 'completed';
+            });
+
+            if ($outcome === 'execution_error') {
                 $this->error('Workflow execution failed. Request a new run to try again.');
 
                 return self::FAILURE;
             }
 
-            if (array_filter($result['steps'], fn (array $step) => $step['success'] === false || $this->failedOutput($step['output']))) {
+            if ($outcome === 'step_failed') {
                 $this->error('Workflow completed with failed steps.');
 
                 return self::FAILURE;

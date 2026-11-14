@@ -96,6 +96,9 @@ class WorkflowServer
             $this->tool('list_workflows', 'List workflows available in the configured project.', []),
             $this->tool('show_workflow', 'Inspect the metadata and steps for a workflow.', $name),
             $this->tool('preview_workflow', 'Preview workflow steps without executing them.', $name + $inputs),
+            $this->tool('get_workflow_run_status', 'Read the status of a local workflow run request in the configured project.', [
+                'requestId' => ['type' => 'string', 'minLength' => 1],
+            ]),
             $this->tool('request_workflow_run', 'Request a local run for human approval in the terminal. Does not execute the workflow.', $name + $inputs, readOnly: false),
         ];
     }
@@ -107,8 +110,10 @@ class WorkflowServer
             'properties' => (object) $properties,
             'additionalProperties' => false,
         ];
-        if (isset($properties['name'])) {
-            $schema['required'] = ['name'];
+        foreach (['name', 'requestId'] as $field) {
+            if (isset($properties[$field])) {
+                $schema['required'][] = $field;
+            }
         }
 
         return [
@@ -135,7 +140,7 @@ class WorkflowServer
         $arguments = property_exists($params, 'arguments') ? $params->arguments : new stdClass;
         if (! $arguments instanceof stdClass
             || array_diff_key((array) $arguments, (array) $tool['inputSchema']['properties'])
-            || (isset($tool['inputSchema']['required']) && (! is_string($arguments->name ?? null) || $arguments->name === ''))
+            || array_filter($tool['inputSchema']['required'] ?? [], fn (string $field) => ! is_string($arguments->$field ?? null) || $arguments->$field === '')
             || ! $this->stringList($arguments, 'values')
             || ! $this->stringList($arguments, 'inputs')) {
             return $this->toolResult(['error' => 'invalid_arguments']);
@@ -144,6 +149,7 @@ class WorkflowServer
         $data = match ($tool['name']) {
             'list_workflows' => $this->inspection->listing(),
             'show_workflow' => $this->inspection->describe($arguments->name),
+            'get_workflow_run_status' => $this->pending->status($arguments->requestId, getcwd() ?: ''),
             'request_workflow_run' => $this->requestRun($arguments),
             'preview_workflow' => $this->inspection->describe(
                 $arguments->name,
