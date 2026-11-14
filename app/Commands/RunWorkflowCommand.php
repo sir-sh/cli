@@ -10,8 +10,8 @@ use App\Services\Remote\RemoteExecutionException;
 use App\Services\Remote\RemoteExecutorFactory;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
-use App\Services\Workflows\WorkflowSummary;
 use App\Services\Workflows\WorkflowRunner;
+use App\Services\Workflows\WorkflowSummary;
 use LaravelZero\Framework\Commands\Command;
 use Symfony\Component\Yaml\Yaml;
 
@@ -127,7 +127,7 @@ class RunWorkflowCommand extends Command
                 return ['error' => 'workflow_not_found'];
             }
             $summary = WorkflowSummary::describe($workflow, preview: true);
-        } catch (\Exception | \TypeError) {
+        } catch (\Exception|\TypeError) {
             return ['error' => 'invalid_workflow'];
         }
 

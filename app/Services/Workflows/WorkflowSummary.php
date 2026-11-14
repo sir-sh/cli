@@ -52,10 +52,14 @@ class WorkflowSummary
                 throw new \InvalidArgumentException('Invalid step definition');
             }
             $types = array_filter(['method', 'task', 'shell'], fn ($type) => isset($step[$type]));
-            $type = count($types) === 1 ? reset($types) : 'unknown';
+            $type = reset($types);
+            if (count($types) !== 1 || ! is_string($step[$type]) || trim($step[$type]) === ''
+                || (isset($step['name']) && ! is_string($step['name']))) {
+                throw new \InvalidArgumentException('Invalid step type or name');
+            }
             $entry = [
                 'index' => count($steps) + 1,
-                'name' => $step['name'] ?? ($type === 'shell' ? 'shell command' : ($step[$type] ?? 'unknown')),
+                'name' => $step['name'] ?? ($type === 'shell' ? 'shell command' : $step[$type]),
                 'type' => $type,
             ];
 
@@ -83,7 +87,7 @@ class WorkflowSummary
 
         return [
             'workflow' => $workflow['_meta'],
-            'opaque' => ($workflow['type'] ?? null) === 'script',
+            'opaque' => in_array($workflow['_meta']['type'], ['sh', 'php'], true),
             'inputs' => $inputs,
             'steps' => $steps,
         ];

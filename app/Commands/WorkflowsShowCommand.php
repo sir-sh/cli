@@ -19,7 +19,7 @@ class WorkflowsShowCommand extends Command
             try {
                 $workflow = $workflowLoader->load($workflowName);
                 $data = $workflow ? WorkflowSummary::describe($workflow) : ['error' => 'workflow_not_found'];
-            } catch (\Exception | \TypeError) {
+            } catch (\Exception|\TypeError) {
                 $data = ['error' => 'invalid_workflow'];
             }
             WorkflowSummary::write($this->output, $data);
