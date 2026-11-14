@@ -87,12 +87,18 @@ class ApproveCommand extends Command
         if (! is_array($output)) {
             return false;
         }
-        if (($output['success'] ?? null) === false || ($output['failureCount'] ?? 0) > 0) {
+        if (is_bool($output['success'] ?? null)) {
+            return ! $output['success'];
+        }
+        if (is_int($output['failureCount'] ?? null) && $output['failureCount'] > 0) {
             return true;
         }
+        if (! is_array($output['loopResults'] ?? null)) {
+            return false;
+        }
 
-        foreach ($output['loopResults'] ?? [] as $iteration) {
-            if ($this->failedOutput($iteration['result'])) {
+        foreach ($output['loopResults'] as $iteration) {
+            if (is_array($iteration) && $this->failedOutput($iteration['result'] ?? null)) {
                 return true;
             }
         }
