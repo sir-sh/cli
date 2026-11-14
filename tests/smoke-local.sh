@@ -86,7 +86,7 @@ if "$sir" run timeout --non-interactive --input=privateValue=private-ci-value > 
     echo 'Expected the timed out workflow to exit nonzero' >&2
     exit 1
 fi
-grep -F 'timed out after 1 seconds' timeout.log
+grep -F 'exceeded the timeout of 1 s' timeout.log
 grep -F 'Command: : [redacted]; exec sleep 5' timeout.log
 if grep -F 'private-ci-value' timeout.log; then
     echo 'Timeout diagnostics exposed the input value' >&2

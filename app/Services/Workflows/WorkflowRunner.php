@@ -275,7 +275,7 @@ class WorkflowRunner
         } catch (ProcessTimedOutException) {
             $command = $this->formatShellCommand($command);
 
-            throw new \RuntimeException("shell command timed out after {$step['timeout']} seconds\nCommand: {$command}");
+            throw new \RuntimeException("shell command exceeded the timeout of {$step['timeout']} s\nCommand: {$command}");
         }
 
         $exitCode = $process->getExitCode();
