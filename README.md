@@ -55,8 +55,14 @@ Pass `--input=name=value` for named inputs and `--dry-run` to preview the steps.
 
 Run `sir start` from your project and open the private URL printed in your
 terminal. Browse installed workflows, preview their steps, request a run, and
-see run status and history. Approve queued runs in your terminal with
-`sir approve <request-id>`. Workflow command output appears in the terminal.
+see run status and history. Run views refresh every five seconds and show
+step numbers, timestamps, and outcomes. Approve queued runs in your terminal
+with `sir approve <request-id>`. The dashboard records structured activity
+and leaves command output and inputs out of the activity log.
+
+Configuration lists the active `.sir` layers and their configuration files.
+Connections lists configured remote target names and types without contacting
+them or showing endpoints, credentials, and environment values.
 
 The dashboard also lets you browse the Sir registry and review the YAML before
 installing the reviewed revision into your project's `.sir/workflows` directory.

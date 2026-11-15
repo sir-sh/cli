@@ -4,7 +4,9 @@ namespace App\Services\Dashboard;
 
 use App\Services\Approvals\PendingRuns;
 use App\Services\Approvals\RunPlan;
+use App\Services\ConfigLoader;
 use App\Services\DashboardRegistry;
+use App\Services\LayerResolver;
 use App\Services\Workflows\WorkflowInputs;
 use App\Services\Workflows\WorkflowInspection;
 
@@ -14,11 +16,18 @@ class Dashboard
 
     public function render(string $method, string $path, array $query, array $form, string $csrf, string $prefix): string
     {
+        $activity = $method === 'GET' && $path === '/run'
+            ? $this->pending->activity(is_string($query['id'] ?? null) ? $query['id'] : '', getcwd() ?: '')
+            : [];
+        $updates = $method === 'GET' && ($path === '/runs' || in_array($activity['state'] ?? null, ['pending', 'running'], true));
         $body = match ([$method, $path]) {
             ['GET', '/'] => $this->workflows(),
             ['GET', '/preview'] => $this->preview($query['name'] ?? null, $csrf),
             ['POST', '/request'] => $this->request($form),
             ['GET', '/runs'] => $this->runs(),
+            ['GET', '/run'] => $this->runActivity($activity),
+            ['GET', '/configuration'] => $this->configuration(),
+            ['GET', '/connections'] => $this->connections(),
             ['GET', '/registry'] => $this->registry($csrf),
             ['POST', '/registry/install'] => $this->install($form, $prefix),
             default => '',
@@ -40,8 +49,10 @@ button{font:inherit;background:#efcf8c;border:1px solid #9d8051;padding:.4rem .7
 CSS;
 
         return '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">'
+            .($updates ? '<meta http-equiv="refresh" content="5">' : '')
             .'<title>Sir Dashboard</title><style>'.$style.'</style><body><header><strong>Sir Dashboard</strong><p><code>'.$project.'</code></p>'
-            .'<nav aria-label="Dashboard"><a href="'.$base.'/">Workflows</a><a href="'.$base.'/runs">Runs</a><a href="'.$base.'/registry">Registry</a></nav>'
+            .'<nav aria-label="Dashboard"><a href="'.$base.'/">Workflows</a><a href="'.$base.'/runs">Runs</a><a href="'.$base.'/registry">Registry</a>'
+            .'<a href="'.$base.'/configuration">Configuration</a><a href="'.$base.'/connections">Connections</a></nav>'
             .'</header><main>'.$body.'</main></body></html>';
     }
 
@@ -156,14 +167,14 @@ CSS;
     private function runs(): string
     {
         $runs = $this->pending->history(getcwd() ?: '');
-        $body = '<h1>Run history</h1><p>Refresh for the latest status. Command output stays in the approval terminal.</p>';
+        $body = '<h1>Run history</h1><p>Updates every five seconds.</p>';
         if ($runs === []) {
             return $body.'<p>No recent requests for this project.</p>';
         }
 
         $body .= '<ol>';
         foreach ($runs as $run) {
-            $body .= '<li><strong>'.self::escape($run['state']).'</strong> <code>'.$run['requestId'].'</code><ul>';
+            $body .= '<li><strong>'.self::escape($run['state']).'</strong> <a href="run?id='.$run['requestId'].'"><code>'.$run['requestId'].'</code></a><ul>';
             foreach (['requestedAt' => 'Requested', 'startedAt' => 'Started', 'finishedAt' => 'Finished'] as $key => $event) {
                 if ($run[$key] !== null) {
                     $body .= '<li>'.$event.' '.gmdate('Y-m-d H:i:s', $run[$key]).' UTC</li>';
@@ -179,6 +190,75 @@ CSS;
         }
 
         return $body.'</ol>';
+    }
+
+    private function runActivity(array $run): string
+    {
+        if (isset($run['error'])) {
+            return $this->error('This run is unavailable.', 404);
+        }
+
+        $body = '<h1>Run activity</h1><p><code>'.self::escape($run['requestId']).'</code> &middot; '.self::escape($run['state']).'</p>'
+            .'<p>Activity includes timestamps and step outcomes. Workflow output, commands, and inputs are excluded.</p>'
+            .'<p><a href="runs">Back to run history</a></p><ol>';
+        $body .= '<li>'.gmdate('Y-m-d H:i:s', $run['requestedAt']).' UTC &middot; Run requested</li>';
+        if ($run['startedAt'] !== null) {
+            $body .= '<li>'.gmdate('Y-m-d H:i:s', $run['startedAt']).' UTC &middot; Run started</li>';
+        }
+        foreach ($run['stepEvents'] as $event) {
+            $body .= '<li>'.gmdate('Y-m-d H:i:s', $event['at']).' UTC &middot; Step '.$event['step'].' '.$event['event'].'</li>';
+        }
+        if ($run['stepEventsTruncated']) {
+            $body .= '<li>Additional step activity omitted.</li>';
+        }
+        if ($run['outcome'] !== null) {
+            $time = $run['finishedAt'] === null ? '' : gmdate('Y-m-d H:i:s', $run['finishedAt']).' UTC &middot; ';
+            $body .= '<li>'.$time.'Outcome: '.self::escape(str_replace('_', ' ', $run['outcome'])).'</li>';
+        }
+        if ($run['state'] === 'pending') {
+            $body .= '<li>Review in your terminal with <code>sir approve '.self::escape($run['requestId']).'</code></li>';
+        }
+
+        return $body.'</ol>';
+    }
+
+    private function configuration(): string
+    {
+        $layers = app(LayerResolver::class)->resolve();
+        $body = '<h1>Configuration</h1><p>Sir configuration layers, nearest first. Settings and secret values stay in their files.</p>';
+        if ($layers === []) {
+            return $body.'<p>No .sir directories found.</p>';
+        }
+
+        $body .= '<ol>';
+        foreach ($layers as $layer) {
+            $files = array_filter(['config.yml', 'config.json'], fn (string $file): bool => is_file($layer.'/'.$file));
+            $body .= '<li><code>'.self::escape($layer).'</code> &middot; '.($files === [] ? 'No configuration files' : implode(', ', $files)).'</li>';
+        }
+
+        return $body.'</ol>';
+    }
+
+    private function connections(): string
+    {
+        $body = '<h1>Connections</h1><p>Remote target names and types from the active Sir configuration layers. Endpoints, credentials, and environment values stay private. Targets are listed without being contacted.</p>';
+        try {
+            $targets = app(ConfigLoader::class)->loadConfig()['remotes'] ?? [];
+        } catch (\Exception) {
+            return $body.'<p>Could not read the Sir configuration.</p>';
+        }
+        if (! is_array($targets) || $targets === []) {
+            return $body.'<p>No remote targets defined in the active configuration layers.</p>';
+        }
+
+        $body .= '<ul>';
+        foreach ($targets as $name => $target) {
+            $type = is_array($target) ? ($target['type'] ?? null) : null;
+            $type = in_array($type, ['ssh', 'docker', 'k8s', 'aws-lambda'], true) ? $type : 'unknown';
+            $body .= '<li><code>'.self::escape((string) $name).'</code> &middot; '.$type.'</li>';
+        }
+
+        return $body.'</ul>';
     }
 
     private function registry(string $csrf): string

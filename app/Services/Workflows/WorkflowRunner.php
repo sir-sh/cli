@@ -20,6 +20,7 @@ class WorkflowRunner
         private TaskRegistry $taskRegistry,
         private ?OutputStyle $output = null,
         private bool $stream = true,
+        private ?\Closure $stepEvent = null,
     ) {}
 
     private const STEP_TYPE_KEYS = ['method', 'task', 'shell'];
@@ -62,6 +63,7 @@ class WorkflowRunner
                 $evaluator = new ConditionEvaluator($context);
                 $conditionResult = $evaluator->evaluate($step['if']);
                 if (! $conditionResult) {
+                    ($this->stepEvent)?->__invoke($stepNum, 'skipped');
                     $this->output?->writeln('<comment>Skipped (condition not met)</comment>');
                     $stepResults[] = [
                         'index' => $index,
@@ -78,6 +80,7 @@ class WorkflowRunner
                 }
             }
 
+            ($this->stepEvent)?->__invoke($stepNum, 'started');
             $stepStartTime = microtime(true);
 
             try {
@@ -97,8 +100,10 @@ class WorkflowRunner
                     'output' => $result,
                 ];
 
+                ($this->stepEvent)?->__invoke($stepNum, self::outputFailed($result) ? 'failed' : 'completed');
                 $this->outputSuccess($duration);
             } catch (\Exception $e) {
+                ($this->stepEvent)?->__invoke($stepNum, 'failed');
                 $duration = microtime(true) - $stepStartTime;
                 $this->outputFailure($e->getMessage(), $duration);
 
@@ -121,6 +126,10 @@ class WorkflowRunner
                 $name = OutputFormatter::escape($step['name'] ?? $this->getStepType($step));
 
                 throw new \RuntimeException("Step {$stepNum} failed: {$name}. ".$e->getMessage(), 0, $e);
+            } catch (\Throwable $error) {
+                ($this->stepEvent)?->__invoke($stepNum, 'failed');
+
+                throw $error;
             }
         }
 
@@ -132,6 +141,30 @@ class WorkflowRunner
             'elapsedSeconds' => round($totalDuration, 3),
             'steps' => $stepResults,
         ];
+    }
+
+    public static function outputFailed(mixed $output): bool
+    {
+        if (! is_array($output)) {
+            return false;
+        }
+        if (is_bool($output['success'] ?? null)) {
+            return ! $output['success'];
+        }
+        if (is_int($output['failureCount'] ?? null) && $output['failureCount'] > 0) {
+            return true;
+        }
+        if (! is_array($output['loopResults'] ?? null)) {
+            return false;
+        }
+
+        foreach ($output['loopResults'] as $iteration) {
+            if (is_array($iteration) && self::outputFailed($iteration['result'] ?? null)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

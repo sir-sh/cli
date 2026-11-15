@@ -54,11 +54,11 @@ class ApproveCommand extends Command
             }
 
             $plan = $this->resolveReviewedPlan($plans, $request);
-            $outcome = $pending->execute($id, $request, function () use ($plan, $executor, $tasks, $request): string {
-                $runner = new WorkflowRunner($plan['methods'], $executor, $tasks, stream: false);
+            $outcome = $pending->execute($id, $request, function (\Closure $stepEvent) use ($plan, $executor, $tasks, $request): string {
+                $runner = new WorkflowRunner($plan['methods'], $executor, $tasks, stream: false, stepEvent: $stepEvent);
                 $result = $runner->run($plan['workflow'], $request['inputs']);
 
-                $failed = array_filter($result['steps'], fn (array $step) => $step['success'] === false || $this->failedOutput($step['output']));
+                $failed = array_filter($result['steps'], fn (array $step) => $step['success'] === false || WorkflowRunner::outputFailed($step['output']));
 
                 return $failed ? 'step_failed' : 'completed';
             });
@@ -85,30 +85,6 @@ class ApproveCommand extends Command
         } finally {
             chdir($originalDirectory);
         }
-    }
-
-    private function failedOutput(mixed $output): bool
-    {
-        if (! is_array($output)) {
-            return false;
-        }
-        if (is_bool($output['success'] ?? null)) {
-            return ! $output['success'];
-        }
-        if (is_int($output['failureCount'] ?? null) && $output['failureCount'] > 0) {
-            return true;
-        }
-        if (! is_array($output['loopResults'] ?? null)) {
-            return false;
-        }
-
-        foreach ($output['loopResults'] as $iteration) {
-            if (is_array($iteration) && $this->failedOutput($iteration['result'] ?? null)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private function resolveReviewedPlan(RunPlan $plans, array $request): array
