@@ -51,6 +51,17 @@ The [quickstart](https://www.sir.sh/docs/QUICKSTART) shows how to install and
 run a pinned workflow from the [Sir workflow registry](https://github.com/sir-sh/workflows).
 Pass `--input=name=value` for named inputs and `--dry-run` to preview the steps.
 
+### Open the local dashboard
+
+Run `sir start` from your project and open the private URL printed in your
+terminal. Browse installed workflows, preview their steps, request a run, and
+see run status and history. Approve queued runs in your terminal with
+`sir approve <request-id>`. Workflow command output appears in the terminal.
+
+The dashboard also lets you browse the Sir registry and review the YAML before
+installing the reviewed revision into your project's `.sir/workflows` directory.
+Installation and execution require separate actions.
+
 Start the read-only MCP server with
 `sir mcp:serve --project-dir=/absolute/path/to/project`. See the
 [MCP client setup guide](https://www.sir.sh/docs/QUICKSTART)
@@ -272,20 +283,13 @@ git commit -m "Example pack"
 cp -r sir-git ~/.sir/packs/
 ```
 
-## Example: Review Workflow
+## Example: Release Notes Workflow
 
-Install the [review workflow from the registry](https://github.com/sir-sh/workflows/tree/main/workflows/review) before running the example.
+Install the [release notes workflow from the registry](https://github.com/sir-sh/workflows/tree/main/workflows/release-notes) and pass a Git ref for the previous release.
 
 ```bash
-sir run review myproject --input=target=feature/new-feature --input=base=main
+sir run release-notes --non-interactive --input=base=v0.1.0
 ```
-
-This workflow:
-1. Creates a temporary workspace
-2. Clones the project repository
-3. Runs tests automatically
-4. Requests CodeRabbit review
-5. Saves results to markdown files
 
 ## Development
 

@@ -172,6 +172,27 @@ class PendingRuns
         return ['requestId' => $id] + $status;
     }
 
+    public function history(string $project): array
+    {
+        try {
+            $directory = $this->directory(create: false);
+        } catch (RuntimeException) {
+            return [];
+        }
+
+        $recent = [];
+        foreach (glob($directory.'/*.status', GLOB_NOSORT) ?: [] as $path) {
+            $id = basename($path, '.status');
+            $receipt = $this->status($id, $project);
+            if (! isset($receipt['error'])) {
+                $recent[] = $receipt;
+            }
+        }
+        usort($recent, fn (array $left, array $right): int => $right['requestedAt'] <=> $left['requestedAt']);
+
+        return array_slice($recent, 0, 50);
+    }
+
     private function readStatus(string $path): ?array
     {
         $contents = @file_get_contents($path.'.status');
