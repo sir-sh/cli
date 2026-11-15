@@ -11,6 +11,10 @@ class PendingRuns
 
     public const RETENTION_SECONDS = 86400;
 
+    private const STEP_EVENT_LIMIT = 100;
+
+    private const STEP_EVENTS = ['started', 'completed', 'skipped', 'failed'];
+
     public function __construct(private LayerResolver $layers) {}
 
     public function create(array $request): string
@@ -132,7 +136,23 @@ class PendingRuns
                 if (! unlink($path)) {
                     throw new RuntimeException('Could not remove the execution payload.');
                 }
-                $outcome = $run();
+                $outcome = $run(function (int $step, string $event) use (&$status, $path): void {
+                    if ($step < 1 || ! in_array($event, self::STEP_EVENTS, true)) {
+                        return;
+                    }
+                    if (count($status['stepEvents'] ?? []) >= self::STEP_EVENT_LIMIT) {
+                        $status['stepEventsTruncated'] = true;
+
+                        return;
+                    }
+
+                    $status['stepEvents'][] = ['step' => $step, 'event' => $event, 'at' => time()];
+                    try {
+                        $this->write($path.'.status', $status);
+                    } catch (RuntimeException) {
+                        // A progress write failure should not interrupt the approved run.
+                    }
+                });
             } catch (\Throwable) {
                 $outcome = 'execution_error';
             }
@@ -150,20 +170,56 @@ class PendingRuns
 
     public function status(string $id, string $project): array
     {
-        $unavailable = ['error' => 'request_unavailable'];
+        $status = $this->projectSnapshot($id, $project);
+        if ($status === null) {
+            return ['error' => 'request_unavailable'];
+        }
+
+        return $this->receipt($id, $status);
+    }
+
+    public function activity(string $id, string $project): array
+    {
+        $status = $this->projectSnapshot($id, $project);
+        if ($status === null) {
+            return ['error' => 'request_unavailable'];
+        }
+
+        $events = [];
+        $storedEvents = is_array($status['stepEvents'] ?? null) ? $status['stepEvents'] : [];
+        foreach (array_slice($storedEvents, 0, self::STEP_EVENT_LIMIT) as $entry) {
+            if (is_array($entry) && is_int($entry['step'] ?? null) && $entry['step'] > 0
+                && in_array($entry['event'] ?? null, self::STEP_EVENTS, true) && is_int($entry['at'] ?? null)) {
+                $events[] = ['step' => $entry['step'], 'event' => $entry['event'], 'at' => $entry['at']];
+            }
+        }
+
+        return $this->receipt($id, $status) + [
+            'stepEvents' => $events,
+            'stepEventsTruncated' => ($status['stepEventsTruncated'] ?? false) === true,
+        ];
+    }
+
+    private function projectSnapshot(string $id, string $project): ?array
+    {
         try {
             $path = $this->path($id, create: false);
             $status = $this->snapshot($path);
         } catch (\Exception) {
-            return $unavailable;
+            return null;
         }
         $identity = @stat($project);
         if ($status === null || $identity === false || $status['project'] !== $project
             || $status['device'] !== $identity['dev'] || $status['inode'] !== $identity['ino']
             || $this->pastRetention($status, time())) {
-            return $unavailable;
+            return null;
         }
 
+        return $status;
+    }
+
+    private function receipt(string $id, array $status): array
+    {
         $status = array_intersect_key($status, array_flip(['state', 'requestedAt', 'expiresAt', 'startedAt', 'finishedAt', 'outcome']));
         $status['elapsedSeconds'] = $status['startedAt'] === null || $status['outcome'] === 'interrupted'
             ? null

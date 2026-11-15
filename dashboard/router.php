@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\Dashboard\Dashboard;
+use App\Services\Dashboard\VoiceSession;
 use Illuminate\Contracts\Console\Kernel;
 
 $address = getenv('SIR_DASHBOARD_ADDRESS');
@@ -10,7 +11,7 @@ $project = getenv('SIR_DASHBOARD_PROJECT');
 header('Cache-Control: no-store');
 header('Referrer-Policy: no-referrer');
 header('X-Content-Type-Options: nosniff');
-header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
+header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'");
 
 if (! $key || ! $project || ! $address || ($_SERVER['HTTP_HOST'] ?? '') !== $address
     || ($_SERVER['REMOTE_ADDR'] ?? '') !== '127.0.0.1') {
@@ -67,5 +68,20 @@ require is_file($base.'/vendor/autoload.php') ? $base.'/vendor/autoload.php' : $
 $app = require $base.'/bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
 
+$route = substr($path, strlen($prefix));
+if ($method === 'GET' && $route === '/ask-voice.js' && app(VoiceSession::class)->available()) {
+    header('Content-Type: application/javascript; charset=utf-8');
+    readfile(__DIR__.'/ask-voice.js');
+
+    return;
+}
+
+if ($method === 'POST' && $route === '/ask-voice') {
+    header('Content-Type: application/sdp');
+    echo app(VoiceSession::class)->answer($_POST['sdp'] ?? null);
+
+    return;
+}
+
 header('Content-Type: text/html; charset=utf-8');
-echo app(Dashboard::class)->render($method, substr($path, strlen($prefix)), $_GET, $_POST, $csrf, $prefix);
+echo app(Dashboard::class)->render($method, $route, $_GET, $_POST, $csrf, $prefix);

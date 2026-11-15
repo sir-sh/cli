@@ -55,12 +55,32 @@ Pass `--input=name=value` for named inputs and `--dry-run` to preview the steps.
 
 Run `sir start` from your project and open the private URL printed in your
 terminal. Browse installed workflows, preview their steps, request a run, and
-see run status and history. Approve queued runs in your terminal with
-`sir approve <request-id>`. Workflow command output appears in the terminal.
+see run status and history. Run views refresh every five seconds and show
+step numbers, timestamps, and outcomes. Approve queued runs in your terminal
+with `sir approve <request-id>`. The dashboard records structured activity
+and leaves command output and inputs out of the activity log.
+
+Configuration lists the active `.sir` layers and their configuration files.
+Connections lists configured remote target names and types without contacting
+them or showing endpoints, credentials, and environment values.
 
 The dashboard also lets you browse the Sir registry and review the YAML before
 installing the reviewed revision into your project's `.sir/workflows` directory.
 Installation and execution require separate actions.
+
+Open **Ask Sir** to find workflows, open an installed workflow’s run review, or
+look up a request by ID. Try `find release`, `sir please run hello`, or
+`status REQUEST_ID`. The text assistant works locally and uses the same
+terminal approval and registry review as the rest of the dashboard. Use
+`create WORKFLOW` to open an editable YAML draft, review it, and explicitly
+save it to the current project.
+
+For optional OpenAI Realtime voice input, set `SIR_OPENAI_API_KEY` only in the
+environment that launches `sir start`. Start voice input from Ask Sir, grant
+microphone access, speak, then finish and review the transcript before sending
+it. Microphone audio goes to OpenAI and uses your API account. Sir keeps the
+API key on the local server and applies the same workflow review to transcribed
+input. See [OpenAI’s WebRTC documentation](https://developers.openai.com/api/docs/guides/voice-webrtc?voice-api=realtime).
 
 Start the read-only MCP server with
 `sir mcp:serve --project-dir=/absolute/path/to/project`. See the

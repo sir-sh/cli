@@ -107,8 +107,15 @@ test('terminal confirmation executes once and redacts sensitive inputs', functio
         ->not->toContain('secret-test-value')
         ->and(file_get_contents($this->project.'/result.txt'))->toBe("approved\n");
 
+    $stored = file_get_contents($this->home.'/.sir/pending-runs/'.$id.'.status');
+    $events = json_decode($stored, true, flags: JSON_THROW_ON_ERROR)['stepEvents'];
+    expect($stored)->not->toContain('secret-test-value', 'Record an approved run', 'printf')
+        ->and(array_column($events, 'step'))->toBe([1, 1])
+        ->and(array_column($events, 'event'))->toBe(['started', 'completed']);
+
     $status = approvalStatus($this, $id);
-    expect($status['state'])->toBe('succeeded')
+    expect($status)->not->toHaveKey('stepEvents')
+        ->and($status['state'])->toBe('succeeded')
         ->and($status['outcome'])->toBe('completed')
         ->and($status['elapsedSeconds'])->toBeGreaterThanOrEqual(0)
         ->and($this->home.'/.sir/pending-runs/'.$id)->not->toBeFile()
