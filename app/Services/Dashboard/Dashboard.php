@@ -30,6 +30,8 @@ class Dashboard
             ['GET', '/connections'] => $this->connections(),
             ['GET', '/registry'] => $this->registry($csrf),
             ['POST', '/registry/install'] => $this->install($form, $prefix),
+            ['GET', '/ask'] => app(AskSir::class)->render($csrf),
+            ['POST', '/ask'] => app(AskSir::class)->render($csrf, $form['message'] ?? ''),
             default => '',
         };
         if ($body === '') {
@@ -52,7 +54,8 @@ CSS;
             .($updates ? '<meta http-equiv="refresh" content="5">' : '')
             .'<title>Sir Dashboard</title><style>'.$style.'</style><body><header><strong>Sir Dashboard</strong><p><code>'.$project.'</code></p>'
             .'<nav aria-label="Dashboard"><a href="'.$base.'/">Workflows</a><a href="'.$base.'/runs">Runs</a><a href="'.$base.'/registry">Registry</a>'
-            .'<a href="'.$base.'/configuration">Configuration</a><a href="'.$base.'/connections">Connections</a></nav>'
+            .'<a href="'.$base.'/configuration">Configuration</a><a href="'.$base.'/connections">Connections</a>'
+            .'<a href="'.$base.'/ask">Ask Sir</a></nav>'
             .'</header><main>'.$body.'</main></body></html>';
     }
 

@@ -68,6 +68,11 @@ The dashboard also lets you browse the Sir registry and review the YAML before
 installing the reviewed revision into your project's `.sir/workflows` directory.
 Installation and execution require separate actions.
 
+Open **Ask Sir** to find workflows, open an installed workflow’s run review, or
+look up a request by ID. Try `find release`, `sir please run hello`, or
+`status REQUEST_ID`. The text assistant works locally and uses the same
+terminal approval and registry review as the rest of the dashboard.
+
 Start the read-only MCP server with
 `sir mcp:serve --project-dir=/absolute/path/to/project`. See the
 [MCP client setup guide](https://www.sir.sh/docs/QUICKSTART)
