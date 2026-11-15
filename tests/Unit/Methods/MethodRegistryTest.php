@@ -6,6 +6,7 @@ use App\Services\LayerResolver;
 use App\Services\Methods\MethodRegistry;
 
 beforeEach(function () {
+    $this->originalDirectory = getcwd() ?: dirname(__DIR__, 3);
     $this->layerResolver = new LayerResolver;
     $this->registry = new MethodRegistry($this->layerResolver);
     $this->tempDir = sys_get_temp_dir().'/sir-method-test-'.uniqid();
@@ -14,6 +15,7 @@ beforeEach(function () {
 });
 
 afterEach(function () {
+    chdir($this->originalDirectory);
     cleanupMethodDir($this->tempDir);
 });
 

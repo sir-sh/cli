@@ -53,7 +53,6 @@ test('S007-FR-021.a: getMetadata args entries have type key', function () {
     }
 });
 
-
 test('S007-FR-021: getMetadata returns name description args effects for all tasks', function () {
     $tasks = [
         new WorkspaceTempTask,
