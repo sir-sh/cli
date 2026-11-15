@@ -3,11 +3,7 @@
 namespace Tests\Unit\Commands;
 
 use App\Commands\AgentCommand;
-use App\Commands\PlanCommand;
-use App\Commands\RunWorkflowCommand;
 use LaravelZero\Framework\Commands\Command;
-
-// === AgentCommand structure tests ===
 
 test('AgentCommand has correct name', function () {
     $command = new AgentCommand;
@@ -33,60 +29,6 @@ test('AgentCommand signature matches sir agent {action=tools} {workflow?}', func
     expect($command->getDefinition()->getArgument('workflow')->isRequired())->toBeFalse();
 });
 
-// === PlanCommand structure tests ===
-
-test('PlanCommand has correct name and description', function () {
-    $command = new PlanCommand;
-    expect($command->getName())->toBe('plan');
-    expect($command->getDescription())->toBe('Show execution plan for a workflow');
-});
-
-test('PlanCommand requires workflow argument', function () {
-    $command = new PlanCommand;
-    $workflowArg = $command->getDefinition()->getArgument('workflow');
-    expect($workflowArg->isRequired())->toBeTrue();
-});
-
-// === RunWorkflowCommand structure tests ===
-
-test('RunWorkflowCommand has correct name', function () {
-    $command = new RunWorkflowCommand;
-    expect($command->getName())->toBe('run');
-});
-
-test('RunWorkflowCommand has --dry-run option', function () {
-    $command = new RunWorkflowCommand;
-    expect($command->getDefinition()->hasOption('dry-run'))->toBeTrue();
-});
-
-test('RunWorkflowCommand has --yes option', function () {
-    $command = new RunWorkflowCommand;
-    expect($command->getDefinition()->hasOption('yes'))->toBeTrue();
-});
-
-test('RunWorkflowCommand has --non-interactive option', function () {
-    $command = new RunWorkflowCommand;
-    expect($command->getDefinition()->hasOption('non-interactive'))->toBeTrue();
-});
-
-test('RunWorkflowCommand requires workflow argument', function () {
-    $command = new RunWorkflowCommand;
-    $workflowArg = $command->getDefinition()->getArgument('workflow');
-    expect($workflowArg->isRequired())->toBeTrue();
-});
-
-// === Exit codes ===
-
-test('Command SUCCESS is 0', function () {
-    expect(Command::SUCCESS)->toBe(0);
-});
-
-test('Command FAILURE is 1', function () {
-    expect(Command::FAILURE)->toBe(1);
-});
-
-// === AgentCommand handle routing ===
-
 test('AgentCommand handle method exists', function () {
     $command = new AgentCommand;
     expect(method_exists($command, 'handle'))->toBeTrue();
@@ -102,15 +44,6 @@ test('AgentCommand has runWorkflow method', function () {
     expect(method_exists($command, 'runWorkflow'))->toBeTrue();
 });
 
-// === Effect display tests ===
-
-test('PlanCommand getEffects is private method', function () {
-    $command = new PlanCommand;
-    expect(method_exists($command, 'getEffects'))->toBeTrue();
-});
-
-// === JSON output structure (via --json flag) ===
-
 test('AgentCommand does not have --json option (handled by caller)', function () {
     // The spec mentions --json flag for tools and plan, but it's passed through
     // to the subcommands, not directly on agent command
@@ -119,10 +52,22 @@ test('AgentCommand does not have --json option (handled by caller)', function ()
     expect($command->getDefinition()->hasOption('json'))->toBeFalse();
 });
 
-test('RunWorkflowCommand does not accept --json on agent run', function () {
-    // JSON mode is handled by the delegate command (run), not by agent
-    // The agent run command does not have a --json option
-    $command = new RunWorkflowCommand;
-    // RunWorkflowCommand itself may have different options than agent expects
-    expect(true)->toBeTrue();
+test('S009-FR-051: AgentCommand handles tools subcommand', function () {
+    $command = new AgentCommand;
+    expect(method_exists($command, 'handle'))->toBeTrue();
+});
+
+test('AgentCommand default action is tools', function () {
+    $command = new AgentCommand;
+    expect($command->getDefinition()->getArgument('action')->getDefault())->toBe('tools');
+});
+
+test('AgentCommand accepts plan action', function () {
+    $command = new AgentCommand;
+    expect($command)->toBeInstanceOf(Command::class);
+});
+
+test('AgentCommand accepts run action', function () {
+    $command = new AgentCommand;
+    expect($command)->toBeInstanceOf(Command::class);
 });

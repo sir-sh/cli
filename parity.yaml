@@ -1,0 +1,56 @@
+coverage_xml: .parity/per-test
+
+test:
+  command: "XDEBUG_MODE=coverage vendor/bin/pest {test_abs} --coverage-clover={coverage} --colors=never"
+  coverage: ".parity/tmp/{slug}.xml"
+  reports: ".parity/per-test"
+
+structure:
+  - name: Sir commands
+    paths:
+      source: app/Commands
+      test: tests
+    file_map:
+      AgentCommand.php: Unit/Commands/AgentCommandTest.php
+      InspireCommand.php: Feature/InspireCommandTest.php
+      McpServeCommand.php: Feature/McpServeCommandTest.php
+      PlanCommand.php: Unit/Commands/PlanCommandTest.php
+      RecipesInstallCommand.php: Unit/Commands/RecipesInstallCommandTest.php
+      RecipesListCommand.php: Unit/Commands/RecipesListCommandTest.php
+      RecipesRemoveCommand.php: Unit/Commands/RecipesRemoveCommandTest.php
+      RecipesUpdateCommand.php: Unit/Commands/RecipesUpdateCommandTest.php
+      RunWorkflowCommand.php: Unit/Commands/RunWorkflowCommandTest.php
+      WhereCommand.php: Unit/Commands/WhereCommandTest.php
+      WorkflowsListCommand.php: Unit/Commands/WorkflowsListCommandTest.php
+      WorkflowsShowCommand.php: Unit/Commands/WorkflowsShowCommandTest.php
+    rules: []
+
+  - name: Sir services
+    paths:
+      source: app/Services
+      test: tests
+    file_map:
+      ConditionEvaluator.php: Unit/ConditionEvaluatorTest.php
+      ConfigLoader.php: Unit/ConfigLoaderTest.php
+      Context.php: Unit/ContextTest.php
+      Dashboard/AskSir.php: Unit/AskSirTest.php
+      Dashboard/ProjectWorkflowFiles.php: Unit/ProjectWorkflowFilesTest.php
+      Dashboard/VoiceSession.php: Unit/VoiceSessionTest.php
+      Dashboard/WorkflowDraft.php: Unit/WorkflowDraftTest.php
+      DashboardRegistry.php: Unit/DashboardRegistryTest.php
+      LayerResolver.php: Unit/LayerResolverTest.php
+      Mcp/WorkflowServer.php: Feature/WorkflowServerTest.php
+      Methods/MethodExecutor.php: Unit/MethodExecutorTest.php
+      Methods/MethodRegistry.php: Unit/Methods/MethodRegistryTest.php
+      Packs/PackManager.php: Unit/Packs/PackManagerTest.php
+      Tasks/BuiltIn/CodeRabbitReviewTask.php: Unit/Tasks/CodeRabbitReviewTaskTest.php
+      Tasks/BuiltIn/TestsAutoTask.php: Unit/Tasks/TestsAutoTaskTest.php
+      Tasks/BuiltIn/WorkspaceTempTask.php: Unit/Tasks/WorkspaceTempTaskTest.php
+      Tasks/Files/FilesWriteMdTask.php: Unit/Tasks/FilesWriteMdTaskTest.php
+      Tasks/Files/FilesWriteTask.php: Unit/Tasks/FilesWriteTaskTest.php
+      Tasks/Git/GitCloneTask.php: Unit/Tasks/GitCloneTaskTest.php
+      Tasks/TaskRegistry.php: Unit/Tasks/TaskRegistryTest.php
+      Workflows/LoopExecutor.php: Unit/LoopExecutorTest.php
+      Workflows/WorkflowLoader.php: Unit/WorkflowLoaderTest.php
+      Workflows/WorkflowRunner.php: Unit/WorkflowRunnerTest.php
+    rules: []

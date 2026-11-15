@@ -2,13 +2,13 @@
 
 namespace Tests\Unit;
 
-use App\Services\Context;
 use App\Services\LayerResolver;
 use App\Services\Methods\MethodExecutor;
 use App\Services\Methods\MethodRegistry;
 use App\Services\Tasks\TaskRegistry;
 use App\Services\Workflows\WorkflowLoader;
 use App\Services\Workflows\WorkflowRunner;
+use Illuminate\Filesystem\Filesystem;
 
 beforeEach(function () {
     $this->layerResolver = new LayerResolver;
@@ -22,125 +22,21 @@ beforeEach(function () {
         $this->taskRegistry,
         null
     );
+    $this->originalDirectory = getcwd() ?: dirname(__DIR__, 2);
     $this->tempDir = sys_get_temp_dir().'/sir-wf-test-'.uniqid();
     mkdir($this->tempDir, 0755, true);
     mkdir($this->tempDir.'/.sir/workflows', 0755, true);
 });
 
 afterEach(function () {
-    deleteDir($this->tempDir);
+    chdir($this->originalDirectory);
+    (new Filesystem)->deleteDirectory($this->tempDir);
 });
-
-function deleteDir(string $dir): void
-{
-    $dir = realpath($dir) ?: $dir;
-    if (! is_dir($dir)) {
-        return;
-    }
-    $files = array_merge(glob($dir.'/*'), glob($dir.'/.*'));
-    foreach ($files as $file) {
-        $base = basename($file);
-        if ($base === '.' || $base === '..') {
-            continue;
-        }
-        if (is_dir($file)) {
-            deleteDir($file);
-        } else {
-            @unlink($file);
-        }
-    }
-    @rmdir($dir);
-}
 
 function makeWorkflow(string $dir, string $name, string $yaml): void
 {
     file_put_contents($dir.'/.sir/workflows/'.$name.'.yml', $yaml);
 }
-
-// === WorkflowLoader::discoverWorkflows ===
-
-test('discoverWorkflows finds YAML workflow', function () {
-    makeWorkflow($this->tempDir, 'test-wf', "steps:\n  - shell: echo hello\n");
-
-    chdir($this->tempDir);
-    $workflows = $this->workflowLoader->discoverWorkflows();
-
-    expect($workflows)->toBeArray();
-    $wf = $workflows['test-wf'];
-    expect($wf['name'])->toBe('test-wf')
-        ->and($wf['type'])->toBe('yml')
-        ->and($wf['layer'])->toContain('.sir');
-});
-
-test('discoverWorkflows finds .sh workflow', function () {
-    file_put_contents($this->tempDir.'/.sir/workflows/my-script.sh', '#!/bin/bash\necho hello');
-    chdir($this->tempDir);
-    $workflows = $this->workflowLoader->discoverWorkflows();
-
-    expect($workflows['my-script']['type'])->toBe('sh');
-});
-
-test('discoverWorkflows finds .php workflow', function () {
-    file_put_contents($this->tempDir.'/.sir/workflows/my-script.php', '<?php echo "hello";');
-    chdir($this->tempDir);
-    $workflows = $this->workflowLoader->discoverWorkflows();
-
-    expect($workflows['my-script']['type'])->toBe('php');
-});
-
-test('discoverWorkflows uses nearest layer when duplicate names exist', function () {
-    // Create nested layers: $tempDir/.sir (far) and $tempDir/near/.sir (near)
-    // LayerResolver walks UP, so run from $tempDir/near to find both
-    mkdir($this->tempDir.'/.sir/workflows', 0755, true);
-    file_put_contents($this->tempDir.'/.sir/workflows/dup.yml', "description: far\nsteps:\n  - shell: echo far\n");
-    mkdir($this->tempDir.'/near', 0755, true);
-    @mkdir($this->tempDir.'/near/.sir/workflows', 0755, true);
-    file_put_contents($this->tempDir.'/near/.sir/workflows/dup.yml', "description: near\nsteps:\n  - shell: echo near\n");
-
-    // Run from the near subdirectory
-    chdir($this->tempDir.'/near');
-    $workflows = $this->workflowLoader->discoverWorkflows();
-
-    // Nearest layer (near) should win — $tempDir/near/.sir is closer to cwd
-    // than $tempDir/.sir, so it is discovered first
-    expect($workflows['dup']['layer'])->toBe(realpath($this->tempDir.'/near').'/.sir');
-});
-
-test('discoverWorkflows returns empty array when no workflows', function () {
-    chdir($this->tempDir);
-    $workflows = $this->workflowLoader->discoverWorkflows();
-
-    expect($workflows)->toBeArray()->toBeEmpty();
-});
-
-// === WorkflowLoader::load ===
-
-test('load returns parsed YAML workflow with _meta', function () {
-    makeWorkflow($this->tempDir, 'sample', "description: Test\nsteps:\n  - shell: echo hello\n");
-    chdir($this->tempDir);
-    $workflow = $this->workflowLoader->load('sample');
-
-    expect($workflow)->toBeArray()
-        ->and($workflow['description'])->toBe('Test')
-        ->and($workflow)->toHaveKey('_meta')
-        ->and($workflow['_meta']['name'])->toBe('sample');
-});
-
-test('load returns null for unknown workflow', function () {
-    chdir($this->tempDir);
-    $workflow = $this->workflowLoader->load('nonexistent');
-
-    expect($workflow)->toBeNull();
-});
-
-test('load returns script type for .sh file', function () {
-    file_put_contents($this->tempDir.'/.sir/workflows/shell-wf.sh', '#!/bin/bash\necho hello');
-    chdir($this->tempDir);
-    $workflow = $this->workflowLoader->load('shell-wf');
-
-    expect($workflow['type'])->toBe('script')
-        ->and($workflow)->toHaveKey('_meta');
-});
 
 // === WorkflowRunner return structure ===
 
@@ -259,57 +155,6 @@ YAML;
         ->toThrow(\RuntimeException::class, 'Step 2 failed:');
 });
 
-// === Template resolution ===
-
-test('Context.resolveTemplate resolves {{varName}}', function () {
-    $context = new Context;
-    $context->set('name', 'Alice');
-    $result = $context->resolveTemplate('Hello {{name}}!');
-
-    expect($result)->toBe('Hello Alice!');
-});
-
-test('Context.resolveTemplate resolves shellQuote()', function () {
-    $context = new Context;
-    $context->set('path', '/tmp/my file');
-    $result = $context->resolveTemplate('File: {{shellQuote(path)}}');
-
-    expect($result)->toBe('File: '.escapeshellarg('/tmp/my file'));
-});
-
-test('Context.resolveTemplate resolves default() for missing variable', function () {
-    $context = new Context;
-    // 'missing' is not set at all
-    $result = $context->resolveTemplate('Value: {{default(missing, fallback)}}');
-
-    expect($result)->toBe('Value: fallback');
-});
-
-test('Context.resolveTemplate resolves default() for set-but-empty variable', function () {
-    $context = new Context;
-    $context->set('emptyVar', '');
-    $result = $context->resolveTemplate('Value: {{default(emptyVar, fallback)}}');
-
-    // When variable is set (even to ''), default() returns its value, not the fallback
-    expect($result)->toBe('Value: ');
-});
-
-test('Context.resolveTemplate returns empty string for undefined variable', function () {
-    $context = new Context;
-    $result = $context->resolveTemplate('Hello {{undefined}}!');
-
-    expect($result)->toBe('Hello !');
-});
-
-test('Context.resolveTemplate passes non-string values through unchanged', function () {
-    $context = new Context;
-    $context->set('count', 42);
-    // resolveTemplate is called only on string values in step args
-    $result = $context->resolveTemplate('Count: {{count}}');
-
-    expect($result)->toBe('Count: 42');
-});
-
 // === Dry run ===
 
 test('dry-run produces no side effects and records steps with success', function () {
@@ -317,7 +162,7 @@ test('dry-run produces no side effects and records steps with success', function
 steps:
   - shell: "echo modified-system"
     saveAs: systemState
-  - shell: "rm -rf /dangerous"
+  - shell: "echo changed > should-not-exist.txt"
 YAML;
     makeWorkflow($this->tempDir, 'dryrun-test', $wf);
     chdir($this->tempDir);
@@ -326,8 +171,7 @@ YAML;
 
     expect($result['success'])->toBeTrue()
         ->and($result['stepCount'])->toBe(2)
-        // Third step should not have been executed (file not created)
-        // verify from step results
         ->and($result['steps'][0]['success'])->toBeTrue()
-        ->and($result['steps'][1]['success'])->toBeTrue();
+        ->and($result['steps'][1]['success'])->toBeTrue()
+        ->and(file_exists($this->tempDir.'/should-not-exist.txt'))->toBeFalse();
 });
