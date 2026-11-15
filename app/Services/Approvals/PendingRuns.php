@@ -36,6 +36,7 @@ class PendingRuns
                 'project' => $request['project'],
                 'device' => $project['dev'],
                 'inode' => $project['ino'],
+                'workflow' => $request['name'],
                 'state' => 'pending',
                 'requestedAt' => $now,
                 'expiresAt' => $request['expiresAt'],
@@ -247,6 +248,32 @@ class PendingRuns
         usort($recent, fn (array $left, array $right): int => $right['requestedAt'] <=> $left['requestedAt']);
 
         return array_slice($recent, 0, 50);
+    }
+
+    public function relayOutcomes(string $project, array $workflowIds): array
+    {
+        if ($workflowIds === []) {
+            return [];
+        }
+
+        $outcomes = [];
+        foreach ($this->history($project) as $receipt) {
+            if ($receipt['finishedAt'] === null || ! in_array($receipt['state'], ['succeeded', 'failed'], true)) {
+                continue;
+            }
+            $status = $this->projectSnapshot($receipt['requestId'], $project);
+            $workflow = $status['workflow'] ?? null;
+            if (in_array($workflow, $workflowIds, true)) {
+                $outcomes[] = [
+                    'workflow_id' => $workflow,
+                    'request_id' => null,
+                    'status' => $receipt['state'],
+                    'finished_at' => gmdate(DATE_ATOM, $receipt['finishedAt']),
+                ];
+            }
+        }
+
+        return $outcomes;
     }
 
     private function readStatus(string $path): ?array
