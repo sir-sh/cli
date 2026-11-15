@@ -8,7 +8,7 @@ use Illuminate\Filesystem\Filesystem;
 
 beforeEach(function () {
     $this->workflowLoader = new WorkflowLoader(new LayerResolver);
-    $this->originalDirectory = getcwd();
+    $this->originalDirectory = getcwd() ?: dirname(__DIR__, 2);
     $this->tempDir = sys_get_temp_dir().'/sir-wf-loader-test-'.uniqid();
     mkdir($this->tempDir.'/.sir/workflows', 0755, true);
 });

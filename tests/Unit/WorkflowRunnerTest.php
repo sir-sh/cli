@@ -22,7 +22,7 @@ beforeEach(function () {
         $this->taskRegistry,
         null
     );
-    $this->originalDirectory = getcwd();
+    $this->originalDirectory = getcwd() ?: dirname(__DIR__, 2);
     $this->tempDir = sys_get_temp_dir().'/sir-wf-test-'.uniqid();
     mkdir($this->tempDir, 0755, true);
     mkdir($this->tempDir.'/.sir/workflows', 0755, true);
