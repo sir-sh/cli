@@ -8,7 +8,7 @@ it('reviews and saves the exact draft bytes only after explicit approval', funct
     putenv('SIR_DASHBOARD_KEY=draft-test-key');
 
     try {
-        $yaml = "steps:\n  - shell: echo '<example>'\n";
+        $yaml = "\nsteps:\n  - shell: echo '<example>'\n";
         $files = Mockery::mock(ProjectWorkflowFiles::class)->makePartial();
         $files->shouldReceive('save')->once()->with('routine.yml', $yaml);
         $draft = new WorkflowDraft($files);
@@ -16,6 +16,11 @@ it('reviews and saves the exact draft bytes only after explicit approval', funct
         $review = $draft->review('csrf', ['name' => 'routine', 'yaml' => $yaml]);
         expect($review)->toContain('&lt;example&gt;', 'Approve and save')->not->toContain('<example>');
         expect(preg_match('/name="approval" value="([a-f0-9]{64})"/', $review, $approval))->toBe(1);
+        expect(preg_match('/name="edit" value="([^"]+)"/', $review, $edit))->toBe(1);
+
+        $editor = $draft->review('csrf', ['name' => 'routine', 'edit' => $edit[1]]);
+        expect($editor)->toContain('name="name"', 'value="routine"', 'action="review"', "\n\nsteps:", '&lt;example&gt;')
+            ->not->toContain('Approve and save');
 
         expect($draft->save([
             'name' => 'routine',
@@ -36,7 +41,10 @@ it('reviews and saves the exact draft bytes only after explicit approval', funct
 it('rejects invalid names and invalid YAML before offering any approval', function () {
     $draft = new WorkflowDraft(new ProjectWorkflowFiles);
 
-    expect($draft->review('csrf', ['name' => '../escape', 'yaml' => 'steps: []']))->not->toContain('Approve and save');
-    expect($draft->review('csrf', ['name' => 'valid', 'yaml' => 'steps: []']))->toContain('not a workflow definition');
+    expect($draft->review('csrf', ['name' => '../escape', 'yaml' => 'steps: []']))
+        ->toContain('value="../escape"', 'steps: []', 'action="review"')
+        ->not->toContain('Approve and save');
+    expect($draft->review('csrf', ['name' => 'valid', 'yaml' => "steps: []\n# Unsaved"]))
+        ->toContain('not a workflow definition', 'value="valid"', '# Unsaved');
     http_response_code(200);
 });

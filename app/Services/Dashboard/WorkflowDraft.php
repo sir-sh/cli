@@ -10,47 +10,54 @@ class WorkflowDraft
 
     public function __construct(private ProjectWorkflowFiles $files) {}
 
-    public function editor(string $csrf, mixed $name): string
+    public function editor(string $csrf, mixed $name, mixed $yaml = null, string $reviewAction = 'draft/review'): string
     {
-        $name = $this->validName($name) ? $name : '';
-        $template = "description: Describe what the workflow does\nsteps:\n  - name: Say hello\n    shell: echo Hello\n";
+        $name = is_string($name) && strlen($name) <= 80 ? $name : '';
+        if (! is_string($yaml) || strlen($yaml) > self::MAX_YAML_BYTES) {
+            $yaml = "description: Describe what the workflow does\nsteps:\n  - name: Say hello\n    shell: echo Hello\n";
+        }
 
         return '<h1>Draft a workflow</h1><p>Edit the YAML and review the exact contents before saving.</p>'
-            .'<form method="post" action="draft/review" autocomplete="off">'.$this->hidden('_csrf', $csrf)
+            .'<form method="post" action="'.$reviewAction.'" autocomplete="off">'.$this->hidden('_csrf', $csrf)
             .'<label for="draft-name">Workflow name</label>'
-            .'<input id="draft-name" name="name" maxlength="80" pattern="[a-zA-Z0-9][a-zA-Z0-9_\-]*" value="'.$name.'" required>'
+            .'<input id="draft-name" name="name" maxlength="80" pattern="[a-zA-Z0-9][a-zA-Z0-9_\-]*" value="'.self::escape($name).'" required>'
             .'<label for="draft-yaml">Workflow YAML</label>'
-            .'<textarea id="draft-yaml" name="yaml" rows="10" cols="65" maxlength="'.self::MAX_YAML_BYTES.'" required>'.self::escape($template).'</textarea>'
+            .'<textarea id="draft-yaml" name="yaml" rows="10" cols="65" maxlength="'.self::MAX_YAML_BYTES.'" required>'."\n".self::escape($yaml).'</textarea>'
             .'<p><button type="submit">Review draft</button></p></form>';
     }
 
     public function review(string $csrf, array $form): string
     {
+        $name = $form['name'] ?? null;
+        if (isset($form['edit'])) {
+            return $this->editor($csrf, $name, $this->decode($form['edit']), 'review');
+        }
+
+        $yaml = $form['yaml'] ?? null;
         try {
-            $name = $form['name'] ?? null;
-            $yaml = $form['yaml'] ?? null;
             $this->validate($name, $yaml);
             $approval = $this->approval($name, $yaml);
         } catch (RuntimeException $error) {
-            return $this->error($error->getMessage());
+            http_response_code(400);
+
+            return '<p role="alert">'.self::escape($error->getMessage()).'</p>'.$this->editor($csrf, $name, $yaml, 'review');
         }
 
         return '<h1>Review workflow draft</h1><p>Save <code>'.$name.'.yml</code> to the project. '
             .'You can request a run after saving.</p><pre>'.self::escape($yaml).'</pre>'
             .'<form method="post" action="save">'.$this->hidden('_csrf', $csrf)
             .$this->hidden('name', $name).$this->hidden('draft', base64_encode($yaml)).$this->hidden('approval', $approval)
-            .'<button type="submit">Approve and save</button></form><p><a href="../draft?name='.$name.'">Back to editor</a></p>';
+            .'<button type="submit">Approve and save</button></form>'
+            .'<form method="post" action="review">'.$this->hidden('_csrf', $csrf).$this->hidden('name', $name)
+            .$this->hidden('edit', base64_encode($yaml)).'<button type="submit">Back to editor</button></form>';
     }
 
     public function save(array $form): string
     {
         try {
             $name = $form['name'] ?? null;
-            $encoded = $form['draft'] ?? null;
             $approval = $form['approval'] ?? null;
-            $yaml = is_string($encoded) && strlen($encoded) <= 4 * ceil(self::MAX_YAML_BYTES / 3)
-                ? base64_decode($encoded, true)
-                : false;
+            $yaml = $this->decode($form['draft'] ?? null);
             $this->validate($name, $yaml);
             if (! is_string($approval) || ! hash_equals($this->approval($name, $yaml), $approval)) {
                 throw new RuntimeException('The draft changed. Review the YAML before saving.');
@@ -73,6 +80,13 @@ class WorkflowDraft
         }
 
         $this->files->validate($name.'.yml', $yaml);
+    }
+
+    private function decode(mixed $encoded): string|false
+    {
+        return is_string($encoded) && strlen($encoded) <= 4 * ceil(self::MAX_YAML_BYTES / 3)
+            ? base64_decode($encoded, true)
+            : false;
     }
 
     private function validName(mixed $name): bool
