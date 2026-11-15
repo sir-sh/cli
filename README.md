@@ -87,6 +87,30 @@ Start the read-only MCP server with
 [MCP client setup guide](https://www.sir.sh/docs/QUICKSTART)
 for tool names and verification commands.
 
+### Pair a project with Sir Remote
+
+On macOS or Linux, enter a fresh pairing code from the hosted dashboard in an
+interactive terminal. Run the pairing and sync commands from the project you
+want to share. Each local Sir profile can pair one project.
+
+```shell
+sir relay pair https://remote.example.com "Development machine"
+sir relay share hello
+sir relay sync --watch
+```
+
+Only explicitly shared workflow IDs and revisions, their recent approved
+dashboard outcomes, and device availability are sent. To receive run
+requests for a workflow without inputs, share it again with
+`sir relay share hello --allow-runs` and run `sir relay sync --watch --review`
+in an interactive terminal. Each request requires typing `approve` after
+reviewing its local definition. Updating the workflow or its method
+dependencies requires sharing the new revision explicitly.
+
+Use `sir relay share hello --remove` and sync to remove the workflow from
+the hosted view. Revoke the device in the hosted dashboard to invalidate
+its credential and use `sir relay unpair` to remove the local pairing.
+
 ## Core Commands
 
 ### Workflow Execution
