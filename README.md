@@ -73,6 +73,13 @@ look up a request by ID. Try `find release`, `sir please run hello`, or
 `status REQUEST_ID`. The text assistant works locally and uses the same
 terminal approval and registry review as the rest of the dashboard.
 
+For optional OpenAI Realtime voice input, set `SIR_OPENAI_API_KEY` only in the
+environment that launches `sir start`. Start voice input from Ask Sir, grant
+microphone access, speak, then finish and review the transcript before sending
+it. Microphone audio goes to OpenAI and uses your API account. Sir keeps the
+API key on the local server and applies the same workflow review to transcribed
+input. See [OpenAI’s WebRTC documentation](https://developers.openai.com/api/docs/guides/voice-webrtc?voice-api=realtime).
+
 Start the read-only MCP server with
 `sir mcp:serve --project-dir=/absolute/path/to/project`. See the
 [MCP client setup guide](https://www.sir.sh/docs/QUICKSTART)

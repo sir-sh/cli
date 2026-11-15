@@ -7,7 +7,7 @@ use App\Services\Workflows\WorkflowInspection;
 
 class AskSir
 {
-    public function __construct(private WorkflowInspection $inspection, private PendingRuns $pending) {}
+    public function __construct(private WorkflowInspection $inspection, private PendingRuns $pending, private VoiceSession $voice = new VoiceSession) {}
 
     public function render(string $csrf, mixed $message = null): string
     {
@@ -19,7 +19,12 @@ class AskSir
             .'<input type="hidden" name="_csrf" value="'.self::escape($csrf).'">'
             .'<label for="sir-message">Message</label>'
             .'<input id="sir-message" name="message" maxlength="240" required>'
-            .'<button type="submit">Ask Sir</button></form>';
+            .'<button type="submit">Ask Sir</button></form>'
+            .($this->voice->available()
+                ? '<p>Voice uses your OpenAI API key and sends microphone audio to OpenAI for transcription.</p>'
+                    .'<button id="sir-voice" type="button" aria-describedby="sir-voice-status">Start voice input</button>'
+                    .'<p id="sir-voice-status" aria-live="polite"></p><script defer src="ask-voice.js"></script>'
+                : '');
     }
 
     private function reply(mixed $message): string
