@@ -13,16 +13,16 @@ structure:
     file_map:
       AgentCommand.php: Unit/Commands/AgentCommandTest.php
       InspireCommand.php: Feature/InspireCommandTest.php
-      McpServeCommand.php: Feature/McpServeTest.php
-      PlanCommand.php: Unit/Commands/AgentCommandTest.php
-      RecipesInstallCommand.php: Unit/Commands/CliCommandsSurfaceTest.php
-      RecipesListCommand.php: Unit/Commands/CliCommandsSurfaceTest.php
-      RecipesRemoveCommand.php: Unit/Commands/CliCommandsSurfaceTest.php
-      RecipesUpdateCommand.php: Unit/Commands/CliCommandsSurfaceTest.php
-      RunWorkflowCommand.php: Unit/Commands/AgentCommandTest.php
-      WhereCommand.php: Unit/LayerResolverTest.php
-      WorkflowsListCommand.php: Unit/Commands/CliCommandsSurfaceTest.php
-      WorkflowsShowCommand.php: Unit/Commands/CliCommandsSurfaceTest.php
+      McpServeCommand.php: Feature/McpServeCommandTest.php
+      PlanCommand.php: Unit/Commands/PlanCommandTest.php
+      RecipesInstallCommand.php: Unit/Commands/RecipesInstallCommandTest.php
+      RecipesListCommand.php: Unit/Commands/RecipesListCommandTest.php
+      RecipesRemoveCommand.php: Unit/Commands/RecipesRemoveCommandTest.php
+      RecipesUpdateCommand.php: Unit/Commands/RecipesUpdateCommandTest.php
+      RunWorkflowCommand.php: Unit/Commands/RunWorkflowCommandTest.php
+      WhereCommand.php: Unit/Commands/WhereCommandTest.php
+      WorkflowsListCommand.php: Unit/Commands/WorkflowsListCommandTest.php
+      WorkflowsShowCommand.php: Unit/Commands/WorkflowsShowCommandTest.php
     rules: []
 
   - name: Sir services
@@ -30,29 +30,27 @@ structure:
       source: app/Services
       test: tests
     file_map:
-      Approvals/PendingRuns.php: Unit/AskSirTest.php
       ConditionEvaluator.php: Unit/ConditionEvaluatorTest.php
       ConfigLoader.php: Unit/ConfigLoaderTest.php
       Context.php: Unit/ContextTest.php
       Dashboard/AskSir.php: Unit/AskSirTest.php
-      Dashboard/ProjectWorkflowFiles.php: Unit/WorkflowDraftTest.php
+      Dashboard/ProjectWorkflowFiles.php: Unit/ProjectWorkflowFilesTest.php
       Dashboard/VoiceSession.php: Unit/VoiceSessionTest.php
       Dashboard/WorkflowDraft.php: Unit/WorkflowDraftTest.php
       DashboardRegistry.php: Unit/DashboardRegistryTest.php
       LayerResolver.php: Unit/LayerResolverTest.php
-      Mcp/WorkflowServer.php: Feature/McpServeTest.php
+      Mcp/WorkflowServer.php: Feature/WorkflowServerTest.php
       Methods/MethodExecutor.php: Unit/MethodExecutorTest.php
-      Methods/MethodRegistry.php: Unit/Methods/MethodSystemTest.php
+      Methods/MethodRegistry.php: Unit/Methods/MethodRegistryTest.php
       Packs/PackManager.php: Unit/Packs/PackManagerTest.php
-      Tasks/BuiltIn/CodeRabbitReviewTask.php: Unit/Tasks/BuiltInTasksTest.php
-      Tasks/BuiltIn/TestsAutoTask.php: Unit/Tasks/BuiltInTasksTest.php
-      Tasks/BuiltIn/WorkspaceTempTask.php: Unit/Tasks/BuiltInTasksTest.php
-      Tasks/Files/FilesWriteMdTask.php: Unit/Tasks/BuiltInTasksTest.php
-      Tasks/Files/FilesWriteTask.php: Unit/Tasks/BuiltInTasksTest.php
-      Tasks/Git/GitCloneTask.php: Unit/Tasks/BuiltInTasksTest.php
-      Tasks/TaskRegistry.php: Unit/Tasks/BuiltInTasksTest.php
-      Workflows/LoopExecutor.php: Unit/LoopLogicTest.php
-      Workflows/WorkflowInspection.php: Unit/AskSirTest.php
-      Workflows/WorkflowLoader.php: Unit/WorkflowTest.php
-      Workflows/WorkflowRunner.php: Unit/WorkflowTest.php
+      Tasks/BuiltIn/CodeRabbitReviewTask.php: Unit/Tasks/CodeRabbitReviewTaskTest.php
+      Tasks/BuiltIn/TestsAutoTask.php: Unit/Tasks/TestsAutoTaskTest.php
+      Tasks/BuiltIn/WorkspaceTempTask.php: Unit/Tasks/WorkspaceTempTaskTest.php
+      Tasks/Files/FilesWriteMdTask.php: Unit/Tasks/FilesWriteMdTaskTest.php
+      Tasks/Files/FilesWriteTask.php: Unit/Tasks/FilesWriteTaskTest.php
+      Tasks/Git/GitCloneTask.php: Unit/Tasks/GitCloneTaskTest.php
+      Tasks/TaskRegistry.php: Unit/Tasks/TaskRegistryTest.php
+      Workflows/LoopExecutor.php: Unit/LoopExecutorTest.php
+      Workflows/WorkflowLoader.php: Unit/WorkflowLoaderTest.php
+      Workflows/WorkflowRunner.php: Unit/WorkflowRunnerTest.php
     rules: []

@@ -146,3 +146,54 @@ test('default with nested property when present', function () {
 
     expect($result)->toBe('1');
 });
+
+// === Template resolution ===
+
+test('Context.resolveTemplate resolves {{varName}}', function () {
+    $context = new Context;
+    $context->set('name', 'Alice');
+    $result = $context->resolveTemplate('Hello {{name}}!');
+
+    expect($result)->toBe('Hello Alice!');
+});
+
+test('Context.resolveTemplate resolves shellQuote()', function () {
+    $context = new Context;
+    $context->set('path', '/tmp/my file');
+    $result = $context->resolveTemplate('File: {{shellQuote(path)}}');
+
+    expect($result)->toBe('File: '.escapeshellarg('/tmp/my file'));
+});
+
+test('Context.resolveTemplate resolves default() for missing variable', function () {
+    $context = new Context;
+    // 'missing' is not set at all
+    $result = $context->resolveTemplate('Value: {{default(missing, fallback)}}');
+
+    expect($result)->toBe('Value: fallback');
+});
+
+test('Context.resolveTemplate resolves default() for set-but-empty variable', function () {
+    $context = new Context;
+    $context->set('emptyVar', '');
+    $result = $context->resolveTemplate('Value: {{default(emptyVar, fallback)}}');
+
+    // When variable is set (even to ''), default() returns its value, not the fallback
+    expect($result)->toBe('Value: ');
+});
+
+test('Context.resolveTemplate returns empty string for undefined variable', function () {
+    $context = new Context;
+    $result = $context->resolveTemplate('Hello {{undefined}}!');
+
+    expect($result)->toBe('Hello !');
+});
+
+test('Context.resolveTemplate passes non-string values through unchanged', function () {
+    $context = new Context;
+    $context->set('count', 42);
+    // resolveTemplate is called only on string values in step args
+    $result = $context->resolveTemplate('Count: {{count}}');
+
+    expect($result)->toBe('Count: 42');
+});

@@ -2,7 +2,6 @@
 
 namespace Tests\Unit;
 
-use App\Commands\WhereCommand;
 use App\Services\LayerResolver;
 
 beforeEach(function () {
@@ -395,26 +394,4 @@ test('S001-EC-007: parent === current guard prevents infinite loop at root', fun
 test('S001-EC-008: null startPath defaults to getcwd', function () {
     $layers = $this->layerResolver->resolve(null);
     expect($layers)->toBeArray();
-});
-
-// === WhereCommand structure tests ===
-
-test('WhereCommand name is where', function () {
-    $command = new WhereCommand;
-    expect($command->getName())->toBe('where');
-});
-
-test('WhereCommand description is "Show loaded .sir layers"', function () {
-    $command = new WhereCommand;
-    expect($command->getDescription())->toBe('Show loaded .sir layers');
-});
-
-test('WhereCommand has no required arguments', function () {
-    $command = new WhereCommand;
-    expect($command->getDefinition()->hasArgument('workflow'))->toBeFalse();
-});
-
-test('WhereCommand handle method exists', function () {
-    $command = new WhereCommand;
-    expect(method_exists($command, 'handle'))->toBeTrue();
 });
