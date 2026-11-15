@@ -180,7 +180,7 @@ class DashboardRegistry
         }
 
         try {
-            if (dirname($temporary) !== $directory || file_put_contents($temporary, $yaml) !== strlen($yaml)
+            if (realpath(dirname($temporary)) !== realpath($directory) || file_put_contents($temporary, $yaml) !== strlen($yaml)
                 || ! @link($temporary, $target)) {
                 throw new RuntimeException('Could not install the workflow without overwriting an existing file.');
             }
