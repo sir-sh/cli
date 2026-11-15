@@ -71,7 +71,9 @@ Installation and execution require separate actions.
 Open **Ask Sir** to find workflows, open an installed workflow’s run review, or
 look up a request by ID. Try `find release`, `sir please run hello`, or
 `status REQUEST_ID`. The text assistant works locally and uses the same
-terminal approval and registry review as the rest of the dashboard.
+terminal approval and registry review as the rest of the dashboard. Use
+`create WORKFLOW` to open an editable YAML draft, review it, and explicitly
+save it to the current project.
 
 For optional OpenAI Realtime voice input, set `SIR_OPENAI_API_KEY` only in the
 environment that launches `sir start`. Start voice input from Ask Sir, grant

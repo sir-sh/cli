@@ -43,8 +43,7 @@ class AskSir
             'status' => $this->status($argument),
             'history' => '<p><a href="runs">View this project’s run history</a>.</p>',
             'download', 'install' => '<p><a href="registry">Browse the registry</a> and review the YAML before approving an installation.</p>',
-            'create', 'draft' => '<p>Draft and review the workflow YAML before saving it in <code>.sir/workflows</code>. '
-                .'Use <a href="registry">the registry</a> for examples. Once saved, use <code>run WORKFLOW</code> to review the run.</p>',
+            'create', 'draft' => '<p><a href="draft?name='.rawurlencode($argument).'">Draft and review the workflow YAML</a> before saving it to this project.</p>',
             default => '<p>Try <code>find WORKFLOW</code>, <code>run WORKFLOW</code>, <code>status REQUEST_ID</code>, or <code>history</code>.</p>',
         };
     }
