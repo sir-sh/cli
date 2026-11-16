@@ -41,6 +41,9 @@ class RelayClient
                 'stream' => true,
                 'proxy' => '',
             ]);
+            if ($endpoint === 'sync' && $token !== null && $response->getStatusCode() === 403) {
+                throw new RelayAccessUnavailable;
+            }
             if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
                 throw new RuntimeException;
             }
@@ -60,6 +63,8 @@ class RelayClient
             }
 
             return $data;
+        } catch (RelayAccessUnavailable $exception) {
+            throw $exception;
         } catch (\Exception) {
             throw new RuntimeException('The Sir relay did not accept the request or returned an invalid response.');
         }

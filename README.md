@@ -99,6 +99,9 @@ sir relay share hello
 sir relay sync --watch
 ```
 
+Watch mode retries every 30 seconds while remote access is suspended or the
+connection is paused. It reconnects with the same pairing when access returns.
+
 Only explicitly shared workflow IDs and revisions, their recent approved
 dashboard outcomes, and device availability are sent. To receive run
 requests for a workflow without inputs, share it again with
