@@ -7,6 +7,8 @@ use RuntimeException;
 
 class RelayClient
 {
+    public bool $supportsStepActivity = false;
+
     public function validateUrl(string $url): string
     {
         $url = rtrim($url, '/');
@@ -44,6 +46,15 @@ class RelayClient
             if ($endpoint === 'sync' && $token !== null && $response->getStatusCode() === 403) {
                 throw new RelayAccessUnavailable;
             }
+            if ($endpoint === 'sync' && $response->getStatusCode() === 422 && $this->supportsStepActivity
+                && array_filter($body['outcomes'] ?? [], fn (array $outcome): bool => isset($outcome['steps'])) !== []) {
+                $this->supportsStepActivity = false;
+                foreach ($body['outcomes'] ?? [] as $index => $outcome) {
+                    unset($body['outcomes'][$index]['steps']);
+                }
+
+                return $this->post($url, $endpoint, $body, $token);
+            }
             if ($response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
                 throw new RuntimeException;
             }
@@ -60,6 +71,10 @@ class RelayClient
             $data = json_decode($body, true, 16, JSON_THROW_ON_ERROR);
             if (strlen($body) >= 8192 || ! is_array($data)) {
                 throw new RuntimeException;
+            }
+
+            if ($endpoint === 'sync' && array_keys($data) === ['request']) {
+                $this->supportsStepActivity = $response->getHeaderLine('Sir-Step-Activity') === '1';
             }
 
             return $data;

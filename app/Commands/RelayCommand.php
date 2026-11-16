@@ -165,7 +165,7 @@ class RelayCommand extends Command
         }
         $sharedIds = array_column($workflows, 'id');
         $localOutcomes = $pending->relayOutcomes($state['project'], $sharedIds);
-        $payload = ['review' => $review, 'workflows' => $workflows, 'outcomes' => $this->outcomes($localOutcomes, $state['outcomes'])];
+        $payload = ['review' => $review, 'workflows' => $workflows, 'outcomes' => $this->outcomes($localOutcomes, $state['outcomes'], $client->supportsStepActivity)];
         if ($review) {
             $payload['request_confirmation'] = true;
         }
@@ -180,7 +180,7 @@ class RelayCommand extends Command
                 $state['url'], 'sync', $payload + ['confirm_request' => $request['id']], $state['token'],
             ) === ['confirmed' => true];
             $this->review($request, $state, $store, $plans, $executor, $tasks, $checkPairing);
-            $payload['outcomes'] = $this->outcomes($localOutcomes, $state['outcomes']);
+            $payload['outcomes'] = $this->outcomes($localOutcomes, $state['outcomes'], $client->supportsStepActivity);
             $client->post($state['url'], 'sync', $payload, $state['token']);
         }
         $this->info('Shared workflow status synchronized.');
@@ -188,12 +188,24 @@ class RelayCommand extends Command
         return self::SUCCESS;
     }
 
-    private function outcomes(array $local, array $remote): array
+    private function outcomes(array $local, array $remote, bool $includeSteps): array
     {
         $outcomes = array_merge($local, $remote);
         usort($outcomes, fn (array $left, array $right): int => strcmp($right['finished_at'], $left['finished_at']));
 
-        return array_slice($outcomes, 0, 20);
+        $outcomes = array_slice($outcomes, 0, 20);
+        $remainingSteps = $includeSteps ? 100 : 0;
+        foreach ($outcomes as &$outcome) {
+            $steps = array_slice($outcome['steps'] ?? [], 0, $remainingSteps);
+            unset($outcome['steps']);
+            if ($steps !== []) {
+                $outcome['steps'] = $steps;
+                $remainingSteps -= count($steps);
+            }
+        }
+        unset($outcome);
+
+        return $outcomes;
     }
 
     private function validateRequest(mixed $request): array
@@ -229,22 +241,29 @@ class RelayCommand extends Command
         $store->save($state);
         $name = $request['workflow_id'];
         $status = 'stale';
+        $steps = [];
         $shared = $state['workflows'][$name] ?? null;
         if ($request['expires'] > time() && ($shared['runs_enabled'] ?? false) && $shared['revision'] === $request['revision']) {
-            $status = $this->approve($request, $plans, $executor, $tasks, $checkPairing);
+            $recordStep = function (int $number, string $event) use (&$steps): void {
+                if (count($steps) < 12 && $number >= 1 && $number <= 100000) {
+                    $steps[] = ['number' => $number, 'event' => $event, 'at' => gmdate(DATE_ATOM)];
+                }
+            };
+            $status = $this->approve($request, $plans, $executor, $tasks, $checkPairing, $recordStep);
         }
         $state['outcomes'][] = [
             'workflow_id' => $name,
             'request_id' => $request['id'],
             'status' => $status,
             'finished_at' => gmdate(DATE_ATOM),
+            'steps' => $steps,
         ];
         $state['outcomes'] = array_slice($state['outcomes'], -20);
         $store->save($state);
         $this->line("Remote request outcome: {$status}.");
     }
 
-    private function approve(array $request, RunPlan $plans, MethodExecutor $executor, TaskRegistry $tasks, callable $checkPairing): string
+    private function approve(array $request, RunPlan $plans, MethodExecutor $executor, TaskRegistry $tasks, callable $checkPairing, \Closure $stepEvent): string
     {
         try {
             $plan = $this->resolve($plans, $request['workflow_id']);
@@ -280,7 +299,7 @@ class RelayCommand extends Command
         }
 
         try {
-            $runner = new WorkflowRunner($plan['methods'], $executor, $tasks, stream: false);
+            $runner = new WorkflowRunner($plan['methods'], $executor, $tasks, stream: false, stepEvent: $stepEvent);
             $result = $runner->run($plan['workflow'], []);
             foreach ($result['steps'] as $step) {
                 if ($step['success'] === false || WorkflowRunner::outputFailed($step['output'])) {
