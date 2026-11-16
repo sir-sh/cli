@@ -5,6 +5,7 @@ namespace App\Commands;
 use App\Services\Approvals\PendingRuns;
 use App\Services\Approvals\RunPlan;
 use App\Services\Methods\MethodExecutor;
+use App\Services\Relay\RelayAccessUnavailable;
 use App\Services\Relay\RelayClient;
 use App\Services\Relay\RelayState;
 use App\Services\Tasks\TaskRegistry;
@@ -28,18 +29,32 @@ class RelayCommand extends Command
 
     public function handle(RelayState $store, RelayClient $client, RunPlan $plans, PendingRuns $pending, MethodExecutor $executor, TaskRegistry $tasks): int
     {
+        $watch = $this->argument('action') === 'sync' && $this->option('watch');
+        $wasSuspended = false;
         try {
             do {
-                $result = $store->locked(function () use ($store, $client, $plans, $pending, $executor, $tasks): int {
-                    return $this->perform($store, $client, $plans, $pending, $executor, $tasks);
-                });
-                $watch = $result === self::SUCCESS && $this->argument('action') === 'sync' && $this->option('watch');
-                if ($watch) {
-                    sleep(10);
-                }
-            } while ($watch);
+                try {
+                    $result = $store->locked(function () use ($store, $client, $plans, $pending, $executor, $tasks): int {
+                        return $this->perform($store, $client, $plans, $pending, $executor, $tasks);
+                    });
+                } catch (RelayAccessUnavailable $exception) {
+                    if (! $watch) {
+                        throw $exception;
+                    }
+                    if (! $wasSuspended) {
+                        $this->warn($exception->getMessage().' Retrying every 30 seconds.');
+                    }
+                    $wasSuspended = true;
+                    sleep(30);
 
-            return $result;
+                    continue;
+                }
+                if (! $watch || $result !== self::SUCCESS) {
+                    return $result;
+                }
+                $wasSuspended = false;
+                sleep(10);
+            } while (true);
         } catch (Throwable $exception) {
             $this->error($exception instanceof RuntimeException ? $exception->getMessage() : 'Sir relay operation failed.');
 
@@ -151,6 +166,9 @@ class RelayCommand extends Command
         $sharedIds = array_column($workflows, 'id');
         $localOutcomes = $pending->relayOutcomes($state['project'], $sharedIds);
         $payload = ['review' => $review, 'workflows' => $workflows, 'outcomes' => $this->outcomes($localOutcomes, $state['outcomes'])];
+        if ($review) {
+            $payload['request_confirmation'] = true;
+        }
         $response = $client->post($state['url'], 'sync', $payload, $state['token']);
         if (array_keys($response) !== ['request'] || (! $review && $response['request'] !== null)) {
             throw new RuntimeException('The Sir relay returned an invalid device response.');
@@ -158,7 +176,9 @@ class RelayCommand extends Command
         if ($response['request'] !== null) {
             $request = $this->validateRequest($response['request']);
             $payload['review'] = false;
-            $checkPairing = fn (): bool => $client->post($state['url'], 'sync', $payload, $state['token']) === ['request' => null];
+            $checkPairing = fn (): bool => $client->post(
+                $state['url'], 'sync', $payload + ['confirm_request' => $request['id']], $state['token'],
+            ) === ['confirmed' => true];
             $this->review($request, $state, $store, $plans, $executor, $tasks, $checkPairing);
             $payload['outcomes'] = $this->outcomes($localOutcomes, $state['outcomes']);
             $client->post($state['url'], 'sync', $payload, $state['token']);
