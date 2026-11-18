@@ -391,3 +391,5 @@ This project is licensed under the MIT License.
 ## Credits
 
 Built with [Laravel Zero](https://laravel-zero.com/) - The Laravel micro-framework for console applications.
+
+[![advertisement](https://ads.servead.net/i/106b36ee-6bb6-4f75-808b-b6c81d9782b3.svg)](https://ads.servead.net/c/106b36ee-6bb6-4f75-808b-b6c81d9782b3)
