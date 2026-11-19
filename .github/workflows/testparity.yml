@@ -14,7 +14,59 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  baseline:
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.4'
+          extensions: fileinfo
+          coverage: xdebug
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: composer update --prefer-stable --no-interaction --prefer-dist --no-progress
+
+      - name: Run the full PHP test suite with coverage
+        run: |
+          mkdir -p .parity
+          XDEBUG_MODE=coverage vendor/bin/pest --coverage-clover=.parity/coverage.xml --colors=never
+
+      - name: Run TestParity
+        id: parity-baseline
+        uses: testparity/actions@30a4e2de4295df73868d1d184ff704f0dad3de2e # baseline regression gate
+        with:
+          post-on-pr: 'false'
+          suite-coverage: .parity/coverage.xml
+          fail-on-findings: 'false'
+
+      - name: Stage base report
+        env:
+          REPORT_DIRECTORY: ${{ steps.parity-baseline.outputs.report-directory }}
+        run: |
+          test -s "$REPORT_DIRECTORY/report.json"
+          mkdir -p "$RUNNER_TEMP/testparity-base"
+          cp "$REPORT_DIRECTORY/report.json" "$RUNNER_TEMP/testparity-base/report.json"
+
+      - name: Preserve base report
+        uses: actions/upload-artifact@v4
+        with:
+          name: testparity-sir-sh-cli-base
+          path: ${{ runner.temp }}/testparity-base/report.json
+          if-no-files-found: error
+          retention-days: 14
+
   coverage:
+    needs: baseline
+    if: ${{ !cancelled() && (needs.baseline.result == 'success' || needs.baseline.result == 'skipped') }}
     runs-on: ubuntu-latest
     outputs:
       artifact-id: ${{ steps.report.outputs.artifact-id }}
@@ -40,11 +92,19 @@ jobs:
           mkdir -p .parity
           XDEBUG_MODE=coverage vendor/bin/pest --coverage-clover=.parity/coverage.xml --colors=never
 
+      - name: Download base report
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: testparity-sir-sh-cli-base
+          path: ${{ github.workspace }}/.parity-baseline
+
       - name: Run TestParity
         id: parity-report
-        uses: testparity/actions@10454fb309cc104296ec001fade186d9330abe65 # v1.1.0
+        uses: testparity/actions@30a4e2de4295df73868d1d184ff704f0dad3de2e # baseline regression gate
         with:
           post-on-pr: 'false'
+          baseline-report: ${{ github.event_name == 'pull_request' && '.parity-baseline/report.json' || '' }}
           suite-coverage: .parity/coverage.xml
           fail-on-findings: 'false'
 
@@ -55,6 +115,9 @@ jobs:
           REPORT_DIRECTORY: ${{ steps.parity-report.outputs.report-directory }}
         run: |
           cp "$REPORT_DIRECTORY/report.md" .parity/comment.md
+          if [ -f "$REPORT_DIRECTORY/baseline-comparison.json" ]; then
+            cp "$REPORT_DIRECTORY/baseline-comparison.json" .parity/baseline-comparison.json
+          fi
 
       - name: Upload coverage evidence
         id: report
